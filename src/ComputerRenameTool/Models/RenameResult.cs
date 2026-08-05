@@ -19,10 +19,10 @@ public sealed record RenameResult(bool IsSuccess, string NewName, int HResult, s
     /// </summary>
     public static string MapHResultToMessage(int hResult) => hResult switch
     {
-        0x80070005 => "修改失败,请确认具有管理员权限。",
-        0x8007007B => "机器名格式错误",
-        0x8007089A => "当前网络环境不允许修改机器名",
-        0x80070015 => "启动重启失败,请手动重启",
+        unchecked((int)0x80070005) => "修改失败,请确认具有管理员权限。",
+        unchecked((int)0x8007007B) => "机器名格式错误",
+        unchecked((int)0x8007089A) => "当前网络环境不允许修改机器名",
+        unchecked((int)0x80070015) => "启动重启失败,请手动重启",
         _ => $"系统调用失败 (HRESULT 0x{hResult:X8})"
     };
 }

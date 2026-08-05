@@ -20,7 +20,7 @@ public sealed class ComputerRenameService : IComputerRenameService
     {
         if (string.IsNullOrWhiteSpace(newName))
         {
-            return RenameResult.Failed(0x80070057, "机器名不能为空。");
+            return RenameResult.Failed(unchecked((int)0x80070057), "机器名不能为空。");
         }
 
         try

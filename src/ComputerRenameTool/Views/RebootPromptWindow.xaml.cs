@@ -50,7 +50,7 @@ public partial class RebootPromptWindow : Window
         {
             App.Logger?.Error("Manual reboot failed.", ex);
             MessageBox.Show(this,
-                ComputerRenameTool.Models.RenameResult.MapHResultToMessage(0x80070015),
+                ComputerRenameTool.Models.RenameResult.MapHResultToMessage(unchecked((int)0x80070015)),
                 "启动重启失败",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }

@@ -106,7 +106,7 @@ public partial class MainWindow : Window
             App.Logger?.Error("Failed to initiate reboot.", ex);
             MessageBox.Show(
                 this,
-                RenameResult.MapHResultToMessage(0x80070015),
+                RenameResult.MapHResultToMessage(unchecked((int)0x80070015)),
                 "启动重启失败",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
