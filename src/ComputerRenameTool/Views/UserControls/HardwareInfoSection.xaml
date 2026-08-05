@@ -7,15 +7,11 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              d:DataContext="{d:DesignInstance Type=vm:HardwareInfoViewModel}"
              d:DesignHeight="160" d:DesignWidth="600">
-    <Border Background="White"
-            BorderBrush="#D8D8DC"
-            BorderThickness="1"
-            CornerRadius="6"
-            Padding="14">
+    <Border Style="{StaticResource CardBorderStyle}">
         <StackPanel>
             <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="电脑配置" />
 
-            <Grid Margin="0,4,0,0">
+            <Grid Margin="0,4,0,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="60" />
                     <ColumnDefinition Width="*" />
@@ -27,7 +23,7 @@
                            ToolTip="{Binding Cpu}" />
             </Grid>
 
-            <Grid Margin="0,6,0,0">
+            <Grid Margin="0,0,0,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="60" />
                     <ColumnDefinition Width="*" />
@@ -36,7 +32,7 @@
                 <TextBlock Grid.Column="1" Style="{StaticResource ValueStyle}" Text="{Binding Memory}" />
             </Grid>
 
-            <Grid Margin="0,6,0,0">
+            <Grid Margin="0,0,0,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="60" />
                     <ColumnDefinition Width="*" />
@@ -48,7 +44,7 @@
                            ToolTip="{Binding Gpu}" />
             </Grid>
 
-            <Grid Margin="0,6,0,0">
+            <Grid Margin="0,0,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="60" />
                     <ColumnDefinition Width="*" />

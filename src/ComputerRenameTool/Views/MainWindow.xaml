@@ -4,17 +4,18 @@
         xmlns:vm="clr-namespace:ComputerRenameTool.ViewModels"
         xmlns:views="clr-namespace:ComputerRenameTool.Views.UserControls"
         Title="Windows 机器名修改工具"
-        Height="540" Width="640"
-        MinHeight="500" MinWidth="600"
+        Height="600" Width="720"
+        MinHeight="540" MinWidth="640"
         WindowStartupLocation="CenterScreen"
-        Background="#F4F4F6"
-        FontFamily="Microsoft YaHei UI, Segoe UI"
-        Foreground="#202020"
+        Background="{StaticResource BgPrimaryBrush}"
+        Foreground="{StaticResource TextPrimaryBrush}"
+        FontFamily="{StaticResource UiFontFamily}"
         Loaded="MainWindow_OnLoaded">
     <Window.Resources>
         <vm:MainViewModel x:Key="MainVM" />
     </Window.Resources>
-    <Grid Margin="16" DataContext="{StaticResource MainVM}">
+
+    <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -24,31 +25,45 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
+        <!-- Accent gradient bar (top) -->
+        <Border Grid.Row="0" Height="2" CornerRadius="1" Margin="0,0,0,16">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#00D9FF" Offset="0" />
+                    <GradientStop Color="#7C3AED" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+
         <!-- Header -->
-        <TextBlock Grid.Row="0"
+        <TextBlock Grid.Row="1"
                    Text="Windows 机器名修改工具"
-                   FontSize="18" FontWeight="SemiBold"
-                   Margin="0,0,0,12" />
+                   FontSize="18"
+                   FontWeight="SemiBold"
+                   Foreground="{StaticResource TextPrimaryBrush}"
+                   Margin="0,0,0,16" />
 
         <!-- 1. Computer info -->
-        <views:ComputerInfoSection Grid.Row="1" Margin="0,0,0,10" DataContext="{Binding Computer}" />
+        <views:ComputerInfoSection Grid.Row="2" Margin="0,0,0,12" DataContext="{Binding Computer}" />
 
         <!-- 2. Hardware info -->
-        <views:HardwareInfoSection Grid.Row="2" Margin="0,0,0,10" DataContext="{Binding Hardware}" />
+        <views:HardwareInfoSection Grid.Row="3" Margin="0,0,0,12" DataContext="{Binding Hardware}" />
 
         <!-- 3. Rename -->
-        <views:RenameSection Grid.Row="3" DataContext="{Binding Rename}" />
+        <views:RenameSection Grid.Row="4" Margin="0,0,0,0" DataContext="{Binding Rename}" />
 
         <!-- Spacer -->
         <Grid Grid.Row="4" />
+        <Grid Grid.Row="5" Height="0" />
 
         <!-- Footer hint + status bar -->
         <Border Grid.Row="5"
-                Background="White"
-                BorderBrush="#D8D8DC"
+                Background="{StaticResource BgSecondaryBrush}"
+                BorderBrush="{StaticResource BorderSubtleBrush}"
                 BorderThickness="1"
-                CornerRadius="4"
-                Padding="10,6">
+                CornerRadius="6"
+                Padding="12,8"
+                Margin="0,16,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -57,11 +72,12 @@
                 <TextBlock Grid.Column="0"
                            Text="修改完成后需要重启电脑才能生效。"
                            VerticalAlignment="Center"
-                           Foreground="#5A5A5A" />
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="12" />
                 <TextBlock Grid.Column="1"
                            Text="{Binding StatusMessage}"
                            VerticalAlignment="Center"
-                           Foreground="#1B8E3B"
+                           Foreground="{StaticResource AccentCyanBrush}"
                            FontWeight="SemiBold" />
             </Grid>
         </Border>

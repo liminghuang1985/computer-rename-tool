@@ -7,11 +7,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              d:DataContext="{d:DesignInstance Type=vm:RenameViewModel}"
              d:DesignHeight="200" d:DesignWidth="600">
-    <Border Background="White"
-            BorderBrush="#D8D8DC"
-            BorderThickness="1"
-            CornerRadius="6"
-            Padding="14">
+    <Border Style="{StaticResource CardBorderStyle}">
         <StackPanel>
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -35,59 +31,62 @@
                 </Grid.ColumnDefinitions>
                 <TextBox Grid.Column="0"
                          x:Name="RenameInput"
-                         Height="32"
-                         Padding="8,0,32,0"
+                         Height="40"
+                         Padding="12,0,40,0"
                          FontSize="14"
+                         FontFamily="{StaticResource MonoFontFamily}"
                          VerticalContentAlignment="Center"
                          Text="{Binding InputName, UpdateSourceTrigger=PropertyChanged, Delay=50}"
                          MaxLength="15"
                          ToolTip="{Binding ValidationMessage}" />
                 <TextBlock Grid.Column="1"
                            Text="{Binding ValidationIcon}"
-                           Margin="-30,0,6,0"
+                           Margin="-34,0,6,0"
                            FontSize="16"
                            VerticalAlignment="Center"
                            Foreground="{Binding ValidationIconBrush}" />
             </Grid>
 
             <!-- Validation message -->
-            <TextBlock Margin="0,4,0,0"
+            <TextBlock Margin="0,6,0,0"
                        Text="{Binding ValidationMessage}"
-                       Foreground="#5A5A5A"
+                       Foreground="{StaticResource TextSecondaryBrush}"
                        FontSize="12" />
 
             <!-- Suggested name -->
             <StackPanel Orientation="Horizontal"
                         Margin="0,10,0,0"
                         Visibility="{Binding HasSuggestion, Converter={StaticResource BoolToVisibilityConverter}}">
-                <TextBlock Text="建议: " Foreground="#5A5A5A" />
-                <TextBlock Text="{Binding SuggestedName}" FontWeight="SemiBold" />
+                <TextBlock Text="建议: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
+                <TextBlock Text="{Binding SuggestedName}"
+                           FontFamily="{StaticResource MonoFontFamily}"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource AccentCyanBrush}" />
                 <Button Content="使用建议"
                         Margin="10,0,0,0"
-                        Padding="10,3"
-                        Command="{Binding UseSuggestedCommand}" />
+                        Padding="10,4"
+                        Command="{Binding UseSuggestedCommand}"
+                        Style="{StaticResource SecondaryButton}" />
             </StackPanel>
 
             <!-- Submit -->
             <Button x:Name="RenameButton"
                     Content="{Binding SubmitButtonText}"
                     Margin="0,16,0,0"
-                    Height="36"
-                    MinWidth="160"
+                    Height="40"
+                    MinWidth="180"
                     HorizontalAlignment="Center"
                     Command="{Binding SubmitCommand}"
                     IsEnabled="{Binding CanSubmit}"
                     Click="RenameButton_Click"
-                    Background="#0067C0"
-                    Foreground="White"
-                    FontWeight="SemiBold"
-                    BorderThickness="0" />
+                    Style="{StaticResource LiftButton}" />
 
             <!-- Submit result -->
-            <TextBlock Margin="0,8,0,0"
+            <TextBlock Margin="0,10,0,0"
                        Text="{Binding SubmitResult}"
                        Foreground="{Binding SubmitResultColor, Converter={StaticResource StringToBrushConverter}}"
                        FontSize="13"
+                       FontFamily="{StaticResource MonoFontFamily}"
                        TextWrapping="Wrap"
                        Visibility="{Binding HasSubmitResult, Converter={StaticResource BoolToVisibilityConverter}}" />
         </StackPanel>

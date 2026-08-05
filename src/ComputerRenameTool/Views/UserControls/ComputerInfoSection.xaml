@@ -7,16 +7,11 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              d:DataContext="{d:DesignInstance Type=vm:ComputerInfoViewModel}"
              d:DesignHeight="160" d:DesignWidth="600">
-    <Border Background="White"
-            BorderBrush="#D8D8DC"
-            BorderThickness="1"
-            CornerRadius="6"
-            Padding="14">
+    <Border Style="{StaticResource CardBorderStyle}">
         <StackPanel>
-            <TextBlock Style="{StaticResource SectionHeaderStyle}"
-                       Text="当前电脑信息" />
+            <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="当前电脑信息" />
 
-            <Grid Margin="0,4,0,0">
+            <Grid Margin="0,4,0,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="100" />
                     <ColumnDefinition Width="*" />
@@ -30,12 +25,13 @@
                 <Button Grid.Column="2"
                         x:Name="CopyNameButton"
                         Content="📋 复制"
-                        Padding="10,3"
+                        Padding="10,4"
                         Margin="6,0,0,0"
-                        Click="CopyNameButton_Click" />
+                        Click="CopyNameButton_Click"
+                        Style="{StaticResource SecondaryButton}" />
             </Grid>
 
-            <Grid Margin="0,6,0,0">
+            <Grid Margin="0,0,0,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="100" />
                     <ColumnDefinition Width="*" />
@@ -46,7 +42,7 @@
                            Text="{Binding WindowsVersion}" />
             </Grid>
 
-            <Grid Margin="0,6,0,0">
+            <Grid Margin="0,0,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="100" />
                     <ColumnDefinition Width="*" />
