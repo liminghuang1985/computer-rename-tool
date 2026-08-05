@@ -5,6 +5,7 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <AssemblyName>ComputerRenameTool</AssemblyName>
     <RootNamespace>ComputerRenameTool</RootNamespace>
@@ -13,7 +14,6 @@
     <Version>1.0.0</Version>
     <Company>IT Tools</Company>
     <Copyright>Copyright (c) 2026</Copyright>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <PropertyGroup>
