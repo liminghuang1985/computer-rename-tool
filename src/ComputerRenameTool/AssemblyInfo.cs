@@ -1,18 +1,11 @@
-using System.Reflection;
-using System.Runtime.InteropServices;
+// Assembly-level attributes (Title, Product, Version, etc.) are now derived
+// from the matching <PropertyGroup> entries in ComputerRenameTool.csproj
+// via SDK auto-generation. ThemeInfo/ComVisible stay here because they have
+// no direct csproj equivalent.
 using System.Windows;
-
-[assembly: AssemblyTitle("Computer Rename Tool")]
-[assembly: AssemblyDescription("Windows 机器名修改工具")]
-[assembly: AssemblyCompany("IT Tools")]
-[assembly: AssemblyProduct("ComputerRenameTool")]
-[assembly: AssemblyCopyright("Copyright (c) 2026")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
 
 [assembly: ThemeInfo(
     ResourceDictionaryLocation.None,
-    ResourceDictionaryLocation.SourceAssembly
-)]
+    ResourceDictionaryLocation.SourceAssembly)]
 
-[assembly: ComVisible(false)]
+[assembly: System.Runtime.InteropServices.ComVisible(false)]

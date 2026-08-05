@@ -10,8 +10,11 @@
     <AssemblyName>ComputerRenameTool</AssemblyName>
     <RootNamespace>ComputerRenameTool</RootNamespace>
     <AssemblyTitle>Windows 机器名修改工具</AssemblyTitle>
+    <Description>Windows 机器名修改工具</Description>
     <Product>Computer Rename Tool</Product>
     <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <Company>IT Tools</Company>
     <Copyright>Copyright (c) 2026</Copyright>
   </PropertyGroup>
