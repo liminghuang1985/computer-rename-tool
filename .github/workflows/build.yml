@@ -56,9 +56,13 @@ jobs:
           path: publish/ComputerRenameTool.exe
           retention-days: 30
 
-      - name: Upload to Release (on tag)
+      - name: Create Release (on tag)
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: publish/ComputerRenameTool.exe
-          generate_release_notes: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" ^
+            publish/ComputerRenameTool.exe ^
+            --title "Computer Rename Tool ${{ github.ref_name }}" ^
+            --notes "Auto-generated release. See CHANGELOG or commit history." ^
+            --verify-tag
