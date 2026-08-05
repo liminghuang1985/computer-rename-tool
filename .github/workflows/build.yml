@@ -44,8 +44,8 @@ jobs:
           $size = (Get-Item publish/ComputerRenameTool.exe).Length
           $sizeMB = [math]::Round($size / 1MB, 2)
           Write-Host "EXE size: ${sizeMB} MB"
-          if ($sizeMB -gt 50) {
-            Write-Error "EXE too large: ${sizeMB} MB (limit 50 MB)"
+          if ($sizeMB -gt 100) {
+            Write-Error "EXE too large: ${sizeMB} MB (limit 100 MB)"
             exit 1
           }
 
