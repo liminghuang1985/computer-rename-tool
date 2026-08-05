@@ -29,14 +29,14 @@ jobs:
 
       - name: Publish (single-file EXE)
         run: |
-          dotnet publish src/ComputerRenameTool/ComputerRenameTool.csproj \
-            -c Release \
-            -r win-x64 \
-            --self-contained true \
-            -p:PublishSingleFile=true \
-            -p:IncludeNativeLibrariesForSelfExtract=true \
-            -p:EnableCompressionInSingleFile=true \
-            -p:PublishReadyToRun=true \
+          dotnet publish src/ComputerRenameTool/ComputerRenameTool.csproj `
+            -c Release `
+            -r win-x64 `
+            -p:SelfContained=true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:PublishReadyToRun=true `
             -o publish/
 
       - name: Verify EXE size
