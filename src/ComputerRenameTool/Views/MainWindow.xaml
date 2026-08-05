@@ -1,0 +1,69 @@
+<Window x:Class="ComputerRenameTool.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:ComputerRenameTool.ViewModels"
+        xmlns:views="clr-namespace:ComputerRenameTool.Views.UserControls"
+        Title="Windows 机器名修改工具"
+        Height="540" Width="640"
+        MinHeight="500" MinWidth="600"
+        WindowStartupLocation="CenterScreen"
+        Background="#F4F4F6"
+        FontFamily="Microsoft YaHei UI, Segoe UI"
+        Foreground="#202020"
+        Loaded="MainWindow_OnLoaded">
+    <Window.Resources>
+        <vm:MainViewModel x:Key="MainVM" />
+    </Window.Resources>
+    <Grid Margin="16" DataContext="{StaticResource MainVM}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0"
+                   Text="Windows 机器名修改工具"
+                   FontSize="18" FontWeight="SemiBold"
+                   Margin="0,0,0,12" />
+
+        <!-- 1. Computer info -->
+        <views:ComputerInfoSection Grid.Row="1" Margin="0,0,0,10" DataContext="{Binding Computer}" />
+
+        <!-- 2. Hardware info -->
+        <views:HardwareInfoSection Grid.Row="2" Margin="0,0,0,10" DataContext="{Binding Hardware}" />
+
+        <!-- 3. Rename -->
+        <views:RenameSection Grid.Row="3" DataContext="{Binding Rename}" />
+
+        <!-- Spacer -->
+        <Grid Grid.Row="4" />
+
+        <!-- Footer hint + status bar -->
+        <Border Grid.Row="5"
+                Background="White"
+                BorderBrush="#D8D8DC"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="10,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="修改完成后需要重启电脑才能生效。"
+                           VerticalAlignment="Center"
+                           Foreground="#5A5A5A" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding StatusMessage}"
+                           VerticalAlignment="Center"
+                           Foreground="#1B8E3B"
+                           FontWeight="SemiBold" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

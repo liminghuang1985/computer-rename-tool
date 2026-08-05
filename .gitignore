@@ -1,0 +1,23 @@
+# Build artifacts
+bin/
+obj/
+publish/
+*.user
+*.suo
+.vs/
+
+# Logs (created by app at runtime)
+Logs/
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+*.swp
+*.bak
