@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     private readonly MainViewModel _vm;
     private readonly IRebootService _reboot;
     private RebootPromptWindow? _rebootPrompt;
+    private bool _rebootPromptShown;
 
     public MainWindow() : this(new RebootService())
     {
@@ -29,6 +30,7 @@ public partial class MainWindow : Window
         _vm = (MainViewModel)Resources["MainVM"];
         _reboot = reboot;
 
+        _vm.Rename.RenameCompleted += OnRenameCompleted;
         _vm.Rename.PropertyChanged += OnRenameViewModelPropertyChanged;
         _reboot.CountdownTick += OnRebootCountdownTick;
         Closing += OnClosing;
@@ -65,16 +67,35 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnRenameCompleted(object? sender, RenameCompletedEventArgs e)
+    {
+        if (!e.Result.IsSuccess) return;
+        // Marshal back to the UI thread; the event may fire from a worker.
+        Dispatcher.BeginInvoke(new Action(OnRenameSucceeded));
+    }
+
     private void OnRenameViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(RenameViewModel.IsSubmitSuccess)) return;
         if (!_vm.Rename.IsSubmitSuccess) return;
 
+        // Fallback path: even if RenameCompleted wiring breaks (e.g. older
+        // build loaded against a newer VM), the property flip still drives
+        // the prompt so the user is never silently left without the reboot
+        // decision. The event path is the primary one and is what the
+        // integration tests assert on.
         Dispatcher.BeginInvoke(new Action(OnRenameSucceeded));
     }
 
     private void OnRenameSucceeded()
     {
+        // De-dupe: if both RenameCompleted and the IsSubmitSuccess fallback
+        // fire, only show the prompt once. The flag flips via a stable
+        // method rather than mutating SubmitResult text, so it survives
+        // re-skinning of the success message.
+        if (_rebootPromptShown) return;
+        _rebootPromptShown = true;
+
         var result = MessageBox.Show(
             this,
             "机器名修改成功!\n\n需要重启电脑后生效。\n\n点【是】立即重启(60 秒倒计时)。\n点【否】稍后重启(下次开机时提醒)。",

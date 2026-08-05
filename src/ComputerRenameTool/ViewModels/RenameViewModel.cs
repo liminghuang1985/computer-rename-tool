@@ -153,6 +153,13 @@ public sealed class RenameViewModel : ObservableObject
     public RelayCommand UseSuggestedCommand { get; }
     public RelayCommand CopyCurrentNameCommand { get; }
 
+    /// <summary>
+    /// Raised once a submit attempt has finished (success or failure). The
+    /// window subscribes to this to drive the "立即/稍后重启" prompt without
+    /// having to inspect localized UI strings.
+    /// </summary>
+    public event EventHandler<RenameCompletedEventArgs>? RenameCompleted;
+
     private void OnInputNameChanged(string? value)
     {
         // Empty — separate state for nicer UX
@@ -209,6 +216,8 @@ public sealed class RenameViewModel : ObservableObject
                 ? "✅ 机器名修改成功。请重启电脑以使新名称生效。"
                 : $"❌ {result.Message}";
 
+            RenameCompleted?.Invoke(this, new RenameCompletedEventArgs(result));
+
             if (!result.IsSuccess)
             {
                 App.Logger?.Warn($"Rename failed. HRESULT=0x{result.HResult:X8}");
@@ -219,6 +228,22 @@ public sealed class RenameViewModel : ObservableObject
             IsSubmitting = false;
         }
     }
+}
+
+/// <summary>
+/// Payload for the <see cref="RenameViewModel.RenameCompleted"/> event. Carries
+/// the full <see cref="RenameResult"/> so subscribers can branch on success /
+/// failure and surface an appropriate follow-up (e.g. reboot prompt) without
+/// having to inspect a translated UI string.
+/// </summary>
+public sealed class RenameCompletedEventArgs : EventArgs
+{
+    public RenameCompletedEventArgs(RenameResult result)
+    {
+        Result = result;
+    }
+
+    public RenameResult Result { get; }
 }
 
 /// <summary>Real-time validation states bound to the rename input (DESIGN.md §5.2).</summary>

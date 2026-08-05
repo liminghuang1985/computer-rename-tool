@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using ComputerRenameTool.MVVM;
 using ComputerRenameTool.Services;
 
@@ -10,6 +11,7 @@ namespace ComputerRenameTool.ViewModels;
 /// </summary>
 public sealed class MainViewModel : ObservableObject
 {
+    private readonly ISystemInfoService _systemInfo;
     private readonly IAdminPrivilegeService _admin;
     private string _statusMessage = string.Empty;
 
@@ -31,6 +33,7 @@ public sealed class MainViewModel : ObservableObject
         IAdminPrivilegeService admin,
         string? suggestedName = null)
     {
+        _systemInfo = systemInfo;
         _admin = admin;
         IsAdmin = admin.IsRunAsAdmin();
 
@@ -40,6 +43,12 @@ public sealed class MainViewModel : ObservableObject
         Computer = new ComputerInfoViewModel(computer);
         Hardware = new HardwareInfoViewModel(hardware);
         Rename = new RenameViewModel(renameService, computer.ComputerName, suggestedName);
+
+        // After a successful rename, the registry has already been updated
+        // even though the new name only takes effect on next boot. Refresh
+        // the displayed name immediately so the user sees the change in the
+        // UI without having to restart.
+        Rename.PropertyChanged += OnRenamePropertyChanged;
 
         RequestElevationCommand = new RelayCommand(RequestElevation, () => !IsAdmin);
     }
@@ -57,6 +66,19 @@ public sealed class MainViewModel : ObservableObject
     }
 
     public RelayCommand RequestElevationCommand { get; }
+
+    private void OnRenamePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(RenameViewModel.IsSubmitSuccess)) return;
+        if (!Rename.IsSubmitSuccess) return;
+
+        // Re-read system info so the top-of-window "current computer name"
+        // reflects the freshly-applied name. The actual binding only uses
+        // ComputerName, but reading the full ComputerInfo keeps the rest of
+        // the section in sync in case other fields ever change.
+        var info = _systemInfo.GetComputerInfo();
+        Computer.ComputerName = info.ComputerName;
+    }
 
     private void RequestElevation()
     {
