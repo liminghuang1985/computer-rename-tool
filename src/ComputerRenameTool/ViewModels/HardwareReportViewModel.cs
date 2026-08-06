@@ -90,7 +90,7 @@ public sealed class HardwareReportViewModel : ObservableObject
         var perChip = chips
             .GroupBy(c => Math.Round((c.CapacityBytes ?? 0UL) / (1024d * 1024d * 1024d), 0))
             .OrderByDescending(g => g.Key)
-            .Select(g => $"{g.Count}×{g.Key:0}GB")
+            .Select(g => $"{g.Count()}×{g.Key:0}GB")
             .ToList();
 
         var modules = string.Join(" + ", perChip);
