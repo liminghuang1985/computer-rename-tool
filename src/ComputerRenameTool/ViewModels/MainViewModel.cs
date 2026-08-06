@@ -54,7 +54,7 @@ public sealed class MainViewModel : ObservableObject
         IsAdmin = admin.IsRunAsAdmin();
 
         var computer = systemInfo.GetComputerInfo();
-        Rename = new RenameViewModel(renameService, computer.ComputerName, suggestedName);
+        Rename = new RenameViewModel(renameService, computer, suggestedName);
 
         // Hardware report is loaded asynchronously so the UI paints first.
         Hardware = new HardwareReportViewModel(HardwareReport.Empty(computer))

@@ -92,7 +92,7 @@ public sealed class HardwareReportViewModel : ObservableObject
             return "数据不可读";
         }
 
-        var total = chips.Sum(c => c.CapacityBytes ?? 0UL);
+        var total = chips.Sum(c => (long)(c.CapacityBytes ?? 0UL));
         var totalGb = Math.Round(total / (1024d * 1024d * 1024d), 1);
         var modules = string.Join(" + ", chips.Select(c =>
         {
