@@ -22,9 +22,10 @@ public class HardwareReportServiceTests
         public MotherboardInfo? Motherboard { get; } = new("Dell Inc.", "Latitude 5540", "ABC123");
         public IReadOnlyList<MemoryChip> MemoryChips { get; } = new[]
         {
-            new MemoryChip("DIMM A1", "Samsung", "M471A2K43", 16UL * 1024 * 1024 * 1024, 4800, 13),
-            new MemoryChip("DIMM B1", "Hynix",  "HMCG78ME", 16UL * 1024 * 1024 * 1024, 4800, 13),
+            new MemoryChip("DIMM A1", "Samsung", "M471A2K43", 16UL * 1024 * 1024 * 1024, 4800, 13, 1),
+            new MemoryChip("DIMM B1", "Hynix",  "HMCG78ME", 16UL * 1024 * 1024 * 1024, 4800, 13, 3),
         };
+        public int? MemorySlotCount { get; } = 4;
         public IReadOnlyList<PhysicalDisk> PhysicalDisks { get; } = new[]
         {
             new PhysicalDisk("Samsung 990 PRO", 1024UL * 1024 * 1024 * 1024, "NVMe", "OK", "S123"),
@@ -39,7 +40,7 @@ public class HardwareReportServiceTests
         };
         public IReadOnlyList<NetworkAdapter> NetworkAdapters { get; } = new[]
         {
-            new NetworkAdapter("Wi-Fi", "WiFi", "aa:bb:cc:dd:ee:ff", 1_000_000_000UL),
+            new NetworkAdapter("Wi-Fi", "WiFi", "aa:bb:cc:dd:ee:ff", 1_000_000_000UL, "10.12.138.38", "255.255.255.0", "10.12.138.1"),
         };
 
         public ComputerInfo GetComputerInfo() => Computer;
@@ -49,6 +50,7 @@ public class HardwareReportServiceTests
         public BiosInfo? GetBiosInfo() => Bios;
         public MotherboardInfo? GetMotherboardInfo() => Motherboard;
         public IReadOnlyList<MemoryChip> GetMemoryChips() => MemoryChips;
+        public int? GetMemorySlotCount() => MemorySlotCount;
         public IReadOnlyList<PhysicalDisk> GetPhysicalDisks() => PhysicalDisks;
         public IReadOnlyList<LogicalDisk> GetLogicalDisks() => LogicalDisks;
         public IReadOnlyList<GpuInfo> GetGpus() => Gpus;

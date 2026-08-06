@@ -252,12 +252,18 @@ public sealed class NetworkAdapterItemViewModel
         Connection = string.IsNullOrWhiteSpace(a.NetConnectionId) ? "—" : a.NetConnectionId;
         Mac = string.IsNullOrWhiteSpace(a.MacAddress) ? "—" : a.MacAddress;
         Speed = a.SpeedBps is null ? "—" : FormatSpeed(a.SpeedBps.Value);
+        IPv4 = string.IsNullOrWhiteSpace(a.IPv4Address) ? "—" : a.IPv4Address;
+        Mask = string.IsNullOrWhiteSpace(a.SubnetMask) ? "—" : a.SubnetMask;
+        Gateway = string.IsNullOrWhiteSpace(a.DefaultGateway) ? "—" : a.DefaultGateway;
     }
 
     public string Name { get; }
     public string Connection { get; }
     public string Mac { get; }
     public string Speed { get; }
+    public string IPv4 { get; }
+    public string Mask { get; }
+    public string Gateway { get; }
 
     private static string FormatSpeed(ulong bps)
     {

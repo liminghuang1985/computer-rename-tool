@@ -32,12 +32,13 @@ public sealed class HardwareReportService : IHardwareReportService
             var bios = _systemInfo.GetBiosInfo();
             var mb = _systemInfo.GetMotherboardInfo();
             var memory = _systemInfo.GetMemoryChips();
+            var slotCount = _systemInfo.GetMemorySlotCount();
             var physical = _systemInfo.GetPhysicalDisks();
             var logical = _systemInfo.GetLogicalDisks();
             var gpus = _systemInfo.GetGpus();
             var network = _systemInfo.GetNetworkAdapters();
 
-            return new HardwareReport(computer, cpu, os, bios, mb, memory, physical, logical, gpus, network);
+            return new HardwareReport(computer, cpu, os, bios, mb, memory, slotCount, physical, logical, gpus, network);
         }, cancellationToken);
     }
 }

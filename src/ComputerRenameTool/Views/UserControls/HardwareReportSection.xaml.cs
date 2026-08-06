@@ -1,25 +1,16 @@
-using System.Windows;
 using System.Windows.Controls;
-using ComputerRenameTool.ViewModels;
 
 namespace ComputerRenameTool.Views.UserControls;
 
 /// <summary>
-/// "Hardware report" section. Replaces the older <see cref="HardwareInfoSection"/>
-/// with a summary + collapsible detail view (FIX-REQUEST-7 §UI 重新设计).
+/// "Hardware report" section. Tab 2 of the main window shows a 5-card summary
+/// row on top, with collapsible <c>Expander</c> panels for the per-category
+/// detail below (FIX-REQUEST-8 — TabControl split, scrollable 500px window).
 /// </summary>
 public partial class HardwareReportSection : UserControl
 {
     public HardwareReportSection()
     {
         InitializeComponent();
-    }
-
-    private void ExpandToggleButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is HardwareReportViewModel vm)
-        {
-            vm.IsExpanded = !vm.IsExpanded;
-        }
     }
 }

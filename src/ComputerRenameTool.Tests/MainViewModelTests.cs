@@ -26,6 +26,7 @@ public class MainViewModelTests
         public BiosInfo? GetBiosInfo() => null;
         public MotherboardInfo? GetMotherboardInfo() => null;
         public IReadOnlyList<MemoryChip> GetMemoryChips() => Array.Empty<MemoryChip>();
+        public int? GetMemorySlotCount() => null;
         public IReadOnlyList<PhysicalDisk> GetPhysicalDisks() => Array.Empty<PhysicalDisk>();
         public IReadOnlyList<LogicalDisk> GetLogicalDisks() => Array.Empty<LogicalDisk>();
         public IReadOnlyList<GpuInfo> GetGpus() => Array.Empty<GpuInfo>();
@@ -96,11 +97,12 @@ public class MainViewModelTests
                 new OperatingSystemInfo("Windows 11 Pro", "10.0", "22631", null, null, null, 0, 0),
                 new BiosInfo("Dell", "1.5", "2024-01-15"),
                 new MotherboardInfo("Dell Inc.", "Latitude 5540", "ABC123"),
-                new[] { new MemoryChip("DIMM A1", "Samsung", "M...", 17179869184UL, 4800, 13) },
+                new[] { new MemoryChip("DIMM A1", "Samsung", "M...", 17179869184UL, 4800, 13, 1) },
+                MemorySlotCount: 4,
                 new[] { new PhysicalDisk("Samsung 990 PRO", 1024UL * 1024 * 1024 * 1024, "NVMe", "OK", "S123") },
                 new[] { new LogicalDisk("C:", "System", 500UL * 1024 * 1024 * 1024, 250UL * 1024 * 1024 * 1024) },
                 new[] { new GpuInfo("NVIDIA RTX 4060", "31.0.15.4601", 8UL * 1024 * 1024 * 1024, "AD107") },
-                new[] { new NetworkAdapter("Wi-Fi", "WiFi", "aa:bb:cc:dd:ee:ff", 1_000_000_000UL) }),
+                new[] { new NetworkAdapter("Wi-Fi", "WiFi", "aa:bb:cc:dd:ee:ff", 1_000_000_000UL, "10.12.138.38", "255.255.255.0", "10.12.138.1") }),
         };
         var vm = new MainViewModel(info, new FakeRenameService(), new FakeAdmin(), hw);
 
@@ -138,6 +140,7 @@ public class MainViewModelTests
             new ComputerInfo("NEW-NAME", "Windows 11", "user"),
             null, null, null, null,
             Array.Empty<MemoryChip>(),
+            MemorySlotCount: null,
             Array.Empty<PhysicalDisk>(),
             Array.Empty<LogicalDisk>(),
             Array.Empty<GpuInfo>(),

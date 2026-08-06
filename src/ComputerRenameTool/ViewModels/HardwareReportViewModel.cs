@@ -11,7 +11,6 @@ namespace ComputerRenameTool.ViewModels;
 public sealed class HardwareReportViewModel : ObservableObject
 {
     private bool _isLoading;
-    private bool _isExpanded;
 
     public HardwareReportViewModel(HardwareReport report)
     {
@@ -38,8 +37,10 @@ public sealed class HardwareReportViewModel : ObservableObject
             .Select(NetworkAdapterItemViewModel.From)
             .ToList();
 
-        MemorySummary = BuildMemorySummary(report.MemoryChips);
+        MemorySummary = BuildMemorySummary(report.MemoryChips, report.MemorySlotCount);
         DiskSummary = BuildDiskSummary(report.PhysicalDisks);
+        NetworkSummary = BuildNetworkSummary(report.NetworkAdapters);
+        PrimaryIpAddress = report.NetworkAdapters.FirstOrDefault(a => !string.IsNullOrWhiteSpace(a.IPv4Address))?.IPv4Address;
     }
 
     public HardwareReport Report { get; }
@@ -50,20 +51,6 @@ public sealed class HardwareReportViewModel : ObservableObject
         set => SetProperty(ref _isLoading, value);
     }
 
-    public bool IsExpanded
-    {
-        get => _isExpanded;
-        set
-        {
-            if (SetProperty(ref _isExpanded, value))
-            {
-                OnPropertyChanged(nameof(ExpandLabel));
-            }
-        }
-    }
-
-    public string ExpandLabel => _isExpanded ? "▾ 收起详细信息" : "▶ 展开详细信息";
-
     public CpuSummaryViewModel Cpu { get; }
     public OsSummaryViewModel OperatingSystem { get; }
     public BiosSummaryViewModel Bios { get; }
@@ -71,6 +58,8 @@ public sealed class HardwareReportViewModel : ObservableObject
 
     public string MemorySummary { get; }
     public string DiskSummary { get; }
+    public string NetworkSummary { get; }
+    public string? PrimaryIpAddress { get; }
 
     public IReadOnlyList<MemoryChipItemViewModel> MemoryChips { get; }
     public IReadOnlyList<PhysicalDiskItemViewModel> PhysicalDisks { get; }
@@ -85,21 +74,50 @@ public sealed class HardwareReportViewModel : ObservableObject
     public bool HasNetworkAdapters => NetworkAdapters.Count > 0;
     public bool HasBios => Bios is not null && Bios.HasAnyValue;
 
-    private static string BuildMemorySummary(IReadOnlyList<MemoryChip> chips)
+    private static string BuildMemorySummary(IReadOnlyList<MemoryChip> chips, int? slotCount)
     {
         if (chips.Count == 0)
         {
             return "数据不可读";
         }
 
+        // Group by capacity so a 2×32GB kit shows "2×32GB" (vs. "32GB + 32GB").
+        // FIX-REQUEST-8: user feedback — the old "64 GB (2 × 32 GB)" read like
+        // an arithmetic check; the slot count "(2/4 槽)" makes the count of
+        // physical sticks obvious.
         var total = chips.Sum(c => (long)(c.CapacityBytes ?? 0UL));
-        var totalGb = Math.Round(total / (1024d * 1024d * 1024d), 1);
-        var modules = string.Join(" + ", chips.Select(c =>
+        var totalGb = Math.Round(total / (1024d * 1024d * 1024d), 0);
+        var perChip = chips
+            .GroupBy(c => Math.Round((c.CapacityBytes ?? 0UL) / (1024d * 1024d * 1024d), 0))
+            .OrderByDescending(g => g.Key)
+            .Select(g => $"{g.Count}×{g.Key:0}GB")
+            .ToList();
+
+        var modules = string.Join(" + ", perChip);
+        var slotInfo = slotCount is null
+            ? $"{chips.Count} 根"
+            : $"{chips.Count}/{slotCount} 槽";
+
+        return $"{totalGb:0} GB ({modules}, {slotInfo})";
+    }
+
+    private static string BuildNetworkSummary(IReadOnlyList<NetworkAdapter> adapters)
+    {
+        // FIX-REQUEST-8: the old summary used the first adapter's
+        // NetConnectionID (e.g. "以太网 3") which is the *adapter friendly name*
+        // not an IP. Pick the first adapter that actually has an IPv4 address.
+        var withIp = adapters.FirstOrDefault(a => !string.IsNullOrWhiteSpace(a.IPv4Address));
+        if (withIp is not null)
         {
-            var gb = c.CapacityBytes is null ? "?" : $"{Math.Round(c.CapacityBytes.Value / (1024d * 1024d * 1024d), 0)} GB";
-            return gb;
-        }));
-        return $"{totalGb:0.#} GB ({chips.Count} × {modules})";
+            return withIp.IPv4Address!;
+        }
+
+        // No IP at all (Wi-Fi off, NIC disabled in software, etc.).
+        if (adapters.Count == 0)
+        {
+            return "数据不可读";
+        }
+        return "无活动 IP";
     }
 
     private static string BuildDiskSummary(IReadOnlyList<PhysicalDisk> disks)

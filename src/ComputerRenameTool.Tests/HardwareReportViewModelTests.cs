@@ -20,9 +20,10 @@ public class HardwareReportViewModelTests
         new MotherboardInfo("Dell Inc.", "Latitude 5540", "ABC123"),
         new[]
         {
-            new MemoryChip("DIMM A1", "Samsung", "M471A2K43", 16UL * 1024 * 1024 * 1024, 4800, 13),
-            new MemoryChip("DIMM B1", "Hynix",  "HMCG78ME", 16UL * 1024 * 1024 * 1024, 4800, 13),
+            new MemoryChip("DIMM A1", "Samsung", "M471A2K43", 16UL * 1024 * 1024 * 1024, 4800, 13, 1),
+            new MemoryChip("DIMM B1", "Hynix",  "HMCG78ME", 16UL * 1024 * 1024 * 1024, 4800, 13, 3),
         },
+        MemorySlotCount: 4,
         new[]
         {
             new PhysicalDisk("Samsung 990 PRO", 1024UL * 1024 * 1024 * 1024, "NVMe", "OK", "S123"),
@@ -37,7 +38,7 @@ public class HardwareReportViewModelTests
         },
         new[]
         {
-            new NetworkAdapter("Wi-Fi", "WiFi", "aa:bb:cc:dd:ee:ff", 1_000_000_000UL),
+            new NetworkAdapter("Wi-Fi", "WiFi", "aa:bb:cc:dd:ee:ff", 1_000_000_000UL, "10.12.138.38", "255.255.255.0", "10.12.138.1"),
         });
 
     [Fact]
@@ -68,8 +69,35 @@ public class HardwareReportViewModelTests
     [Fact]
     public void MemorySummary_CombinesChipCount()
     {
+        // FIX-REQUEST-8: per-chip grouping "2×16GB" + slot count "(2/4 槽)"
+        // so users see the physical stick layout at a glance, not just total GB.
         var vm = new HardwareReportViewModel(FullReport());
-        Assert.Equal("32 GB (2 × 16 GB + 16 GB)", vm.MemorySummary);
+        Assert.Equal("32 GB (2×16GB, 2/4 槽)", vm.MemorySummary);
+    }
+
+    [Fact]
+    public void NetworkSummary_PrefersAdapterWithIPv4()
+    {
+        // User feedback: the old summary used NetConnectionID ("以太网 3")
+        // which is the friendly adapter name, not an IP. The summary must
+        // pick the first adapter that actually has an IPv4 (FIX-REQUEST-8).
+        var report = new HardwareReport(
+            new ComputerInfo("PC", "Win", "u"),
+            null, null, null, null,
+            Array.Empty<MemoryChip>(),
+            MemorySlotCount: null,
+            Array.Empty<PhysicalDisk>(),
+            Array.Empty<LogicalDisk>(),
+            Array.Empty<GpuInfo>(),
+            new[]
+            {
+                new NetworkAdapter("WAN Miniport", "以太网 3", null, null, null, null, null),
+                new NetworkAdapter("Intel Wi-Fi 6", "WiFi", "aa:bb:cc:dd:ee:ff", 1_000_000_000UL,
+                    "10.12.138.38", "255.255.255.0", "10.12.138.1"),
+            });
+        var vm = new HardwareReportViewModel(report);
+        Assert.Equal("10.12.138.38", vm.NetworkSummary);
+        Assert.Equal("10.12.138.38", vm.PrimaryIpAddress);
     }
 
     [Fact]
@@ -89,17 +117,6 @@ public class HardwareReportViewModelTests
         Assert.False(vm.HasMemoryChips);
         Assert.False(vm.HasPhysicalDisks);
         Assert.False(vm.HasNetworkAdapters);
-    }
-
-    [Fact]
-    public void ExpandToggle_FlipsLabelAndProperty()
-    {
-        var vm = new HardwareReportViewModel(FullReport());
-        Assert.False(vm.IsExpanded);
-        Assert.Equal("▶ 展开详细信息", vm.ExpandLabel);
-
-        vm.IsExpanded = true;
-        Assert.Equal("▾ 收起详细信息", vm.ExpandLabel);
     }
 
     [Fact]

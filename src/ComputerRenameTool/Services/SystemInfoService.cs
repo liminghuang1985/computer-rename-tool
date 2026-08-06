@@ -137,17 +137,36 @@ public sealed class SystemInfoService : ISystemInfoService
             {
                 using (obj)
                 {
+                    var locator = obj["DeviceLocator"] as string;
                     list.Add(new MemoryChip(
-                        obj["DeviceLocator"] as string,
+                        locator,
                         obj["Manufacturer"] as string,
                         obj["PartNumber"] as string,
                         ToULong(obj["Capacity"]),
                         ToUInt(obj["Speed"]),
-                        ToUShort(obj["FormFactor"])));
+                        ToUShort(obj["FormFactor"]),
+                        ParseSlotNumber(locator)));
                 }
             }
             return (IReadOnlyList<MemoryChip>)list;
         }, Array.Empty<MemoryChip>());
+    }
+
+    public int? GetMemorySlotCount()
+    {
+        return SafeRead(() =>
+        {
+            using var searcher = NewWmiSearcher("SELECT MemoryDevices FROM Win32_PhysicalMemoryArray");
+            using var collection = searcher.Get();
+            foreach (ManagementBaseObject obj in collection)
+            {
+                using (obj)
+                {
+                    return ToInt(obj["MemoryDevices"]);
+                }
+            }
+            return null;
+        }, null);
     }
 
     public IReadOnlyList<PhysicalDisk> GetPhysicalDisks()
@@ -224,18 +243,47 @@ public sealed class SystemInfoService : ISystemInfoService
     {
         return SafeRead(() =>
         {
+            // IPEnabled adapters carry the per-adapter IPv4/subnet/gateway in a
+            // separate WMI class (Win32_NetworkAdapterConfiguration) joined on
+            // Index. Pull both in one pass so the join is consistent.
+            var ipByIndex = new Dictionary<uint, (string? ipv4, string? mask, string? gateway)>();
+            using (var cfgSearcher = NewWmiSearcher(
+                "SELECT Index, IPAddress, IPSubnet, DefaultIPGateway FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled=TRUE"))
+            using (var cfgCollection = cfgSearcher.Get())
+            {
+                foreach (ManagementBaseObject cfg in cfgCollection)
+                {
+                    using (cfg)
+                    {
+                        var idx = ToUInt(cfg["Index"]) ?? 0;
+                        var ips = cfg["IPAddress"] as string[];
+                        var masks = cfg["IPSubnet"] as string[];
+                        var gateways = cfg["DefaultIPGateway"] as string[];
+                        var ipv4 = ips?.FirstOrDefault(ip => !string.IsNullOrEmpty(ip) && !ip.Contains(':'));
+                        var mask = masks?.FirstOrDefault(m => !string.IsNullOrEmpty(m) && !m.Contains(':'));
+                        var gw = gateways?.FirstOrDefault(g => !string.IsNullOrEmpty(g) && !g.Contains(':'));
+                        ipByIndex[idx] = (ipv4, mask, gw);
+                    }
+                }
+            }
+
             var list = new List<NetworkAdapter>();
-            using var searcher = NewWmiSearcher("SELECT Name, MACAddress, NetConnectionID, Speed, NetEnabled FROM Win32_NetworkAdapter WHERE NetEnabled=TRUE");
+            using var searcher = NewWmiSearcher("SELECT Index, Name, MACAddress, NetConnectionID, Speed, NetEnabled FROM Win32_NetworkAdapter WHERE NetEnabled=TRUE");
             using var collection = searcher.Get();
             foreach (ManagementBaseObject obj in collection)
             {
                 using (obj)
                 {
+                    var idx = ToUInt(obj["Index"]) ?? 0;
+                    ipByIndex.TryGetValue(idx, out var ip);
                     list.Add(new NetworkAdapter(
                         obj["Name"] as string,
                         obj["NetConnectionID"] as string,
                         obj["MACAddress"] as string,
-                        ToULong(obj["Speed"])));
+                        ToULong(obj["Speed"]),
+                        ip.ipv4,
+                        ip.mask,
+                        ip.gateway));
                 }
             }
             return (IReadOnlyList<NetworkAdapter>)list;
@@ -459,6 +507,18 @@ public sealed class SystemInfoService : ISystemInfoService
         if (string.IsNullOrWhiteSpace(raw)) return raw;
         var trimmed = raw!.Trim();
         return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+    }
+
+    /// <summary>
+    /// DIMM DeviceLocator strings look like "DIMM A1", "P0_Node0_Channel0_Dimm0"
+    /// or "BANK 0". We pull the trailing decimal so users see a sensible slot
+    /// index in the table; falls back to <c>null</c> when no number is found.
+    /// </summary>
+    private static int? ParseSlotNumber(string? locator)
+    {
+        if (string.IsNullOrWhiteSpace(locator)) return null;
+        var digits = new string(locator.Reverse().TakeWhile(char.IsDigit).Reverse().ToArray());
+        return int.TryParse(digits, out var n) ? n : null;
     }
 
     private static int? ToInt(object? value) => value is null ? null : Convert.ToInt32(value, CultureInfo.InvariantCulture);

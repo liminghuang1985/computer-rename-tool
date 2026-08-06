@@ -24,6 +24,13 @@ public interface ISystemInfoService
 
     IReadOnlyList<MemoryChip> GetMemoryChips();
 
+    /// <summary>
+    /// Total DIMM slots on the motherboard (e.g. 4 for a typical desktop) from
+    /// <c>Win32_PhysicalMemoryArray.MemoryDevices</c>. Returns <c>null</c> when
+    /// WMI cannot resolve it (FIX-REQUEST-8).
+    /// </summary>
+    int? GetMemorySlotCount();
+
     IReadOnlyList<PhysicalDisk> GetPhysicalDisks();
 
     IReadOnlyList<LogicalDisk> GetLogicalDisks();

@@ -13,13 +13,14 @@ public class HardwareModelTests
     [Fact]
     public void MemoryChip_FieldsRoundTrip()
     {
-        var c = new MemoryChip("DIMM A1", "Samsung", "M471A2K43", 17179869184UL, 4800, 13);
+        var c = new MemoryChip("DIMM A1", "Samsung", "M471A2K43", 17179869184UL, 4800, 13, 1);
         Assert.Equal("DIMM A1", c.DeviceLocator);
         Assert.Equal("Samsung", c.Manufacturer);
         Assert.Equal("M471A2K43", c.PartNumber);
         Assert.Equal(17179869184UL, c.CapacityBytes);
         Assert.Equal(4800u, c.SpeedMHz);
         Assert.Equal((ushort)13, c.FormFactor);
+        Assert.Equal(1, c.SlotNumber);
     }
 
     [Fact]
@@ -54,11 +55,14 @@ public class HardwareModelTests
     [Fact]
     public void NetworkAdapter_FieldsRoundTrip()
     {
-        var a = new NetworkAdapter("Wi-Fi", "WiFi", "aa:bb:cc:dd:ee:ff", 1_000_000_000UL);
+        var a = new NetworkAdapter("Wi-Fi", "WiFi", "aa:bb:cc:dd:ee:ff", 1_000_000_000UL, "10.12.138.38", "255.255.255.0", "10.12.138.1");
         Assert.Equal("Wi-Fi", a.Name);
         Assert.Equal("WiFi", a.NetConnectionId);
         Assert.Equal("aa:bb:cc:dd:ee:ff", a.MacAddress);
         Assert.Equal(1_000_000_000UL, a.SpeedBps);
+        Assert.Equal("10.12.138.38", a.IPv4Address);
+        Assert.Equal("255.255.255.0", a.SubnetMask);
+        Assert.Equal("10.12.138.1", a.DefaultGateway);
     }
 
     [Fact]
