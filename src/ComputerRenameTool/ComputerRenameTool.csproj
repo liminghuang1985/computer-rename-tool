@@ -28,4 +28,9 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Required by ComputerRenameService for Win32_ComputerSystem.Rename. -->
+    <PackageReference Include="System.Management" Version="8.0.0" />
+  </ItemGroup>
+
 </Project>

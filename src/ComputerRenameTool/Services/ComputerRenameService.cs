@@ -1,185 +1,134 @@
-using System.Runtime.InteropServices;
+using System.Management;
 using ComputerRenameTool.Models;
 
 namespace ComputerRenameTool.Services;
 
 /// <summary>
-/// Thin wrapper around <c>kernel32!SetComputerNameExW</c> (DESIGN.md §8). All
-/// non-success outcomes are returned as <see cref="RenameResult"/>s — never
-/// thrown — so the view-model can keep rendering the UI.
+/// Renames the local machine via WMI <c>Win32_ComputerSystem.Rename</c>.
+///
+/// Design history:
+///   * v1 — <c>SetComputerNameExW</c> P/Invoke with <c>SE_RESTORE_NAME</c>.
+///     Failed on the user's box: UAC elevation alone is insufficient on
+///     Windows 10/11, the call needs a SYSTEM-context privilege that admin
+///     user tokens don't carry, and <c>GetLastError() == 5</c>
+///     (ERROR_ACCESS_DENIED) silently propagates from the kernel.
+///   * v2 (this file) — use the WMI <c>Rename</c> method on
+///     <c>Win32_ComputerSystem</c>. This is the same code path Microsoft's
+///     "Rename this PC" settings page uses; it works under an admin user
+///     token without <c>SE_RESTORE_NAME</c>. <c>ReturnValue == 0</c> means
+///     the rename was accepted; non-zero codes are surfaced through
+///     <see cref="RenameResult.HResult"/> using <c>0x8007XXXX</c> so the UI
+///     message table stays consistent.
+///
+/// Failures never throw — they return a <see cref="RenameResult"/> carrying
+/// the Win32 HRESULT so the view-model can keep rendering the UI.
 /// </summary>
 public sealed class ComputerRenameService : IComputerRenameService
 {
-    /// <summary>
-    /// Performs the rename. The kernel call requires the process to be
-    /// elevated and to hold <c>SE_RESTORE_NAME</c>; failures surface as
-    /// <see cref="RenameResult.HResult"/>-bearing result objects that the UI
-    /// maps to user-friendly messages via
-    /// <see cref="RenameResult.MapHResultToMessage"/>.
-    /// </summary>
+    /// <summary>HRESULT for arbitrary WMI failure (no specific kernel code).</summary>
+    private const int FacadeWin32Generic = unchecked((int)0x80070001);
+    private const int E_InvalidArg = unchecked((int)0x80070057);
+
     public RenameResult Rename(string newName)
     {
         if (string.IsNullOrWhiteSpace(newName))
         {
-            return RenameResult.Failed(unchecked((int)0x80070057), "机器名不能为空。");
+            return RenameResult.Failed(E_InvalidArg, "机器名不能为空。");
         }
 
-        // SE_RESTORE_NAME must be enabled on the current process token before
-        // SetComputerNameExW is called, otherwise the kernel returns
-        // 0x80070005 (E_ACCESSDENIED) even when the user is a member of
-        // Administrators and the binary manifest is requesting
-        // requireAdministrator. This is the same adjustment the Windows
-        // "System Properties" dialog performs internally.
-        if (!EnablePrivilege(SE_RESTORE_NAME))
-        {
-            var err = Marshal.GetLastWin32Error();
-            return RenameResult.Failed(ToHResult(err), RenameResult.MapHResultToMessage(ToHResult(err)));
-        }
+        App.Logger?.Info($"Rename requested: '{newName}'");
 
         try
         {
-            var ok = SetComputerNameExW(ComputerNameFormat.ComputerNamePhysicalDnsHostname, newName);
-            if (!ok)
+            var result = InvokeWmiRename(newName);
+            if (!result.IsSuccess)
             {
-                var err = Marshal.GetLastWin32Error();
-                return RenameResult.Failed(ToHResult(err), RenameResult.MapHResultToMessage(ToHResult(err)));
+                App.Logger?.Warn($"Rename failed. HRESULT=0x{result.HResult:X8} {result.Message}");
             }
-
-            App.Logger?.Info($"Computer renamed to '{newName}'.");
-            return RenameResult.Success(newName);
+            return result;
         }
         catch (Exception ex)
         {
-            App.Logger?.Error("SetComputerNameExW threw.", ex);
+            App.Logger?.Error("Rename threw an unexpected exception.", ex);
             return RenameResult.Failed(unchecked((int)0x80000000) | ex.HResult, ex.Message);
         }
     }
 
     /// <summary>
-    /// Convert a raw Win32 error code (as returned by <c>GetLastError</c>) into
-    /// an HRESULT of the form <c>0x8007XXXX</c>, matching the format used by
-    /// the rest of the codebase and the exception-mapping table.
+    /// Perform the rename through WMI. We invoke <c>Rename</c> on the single
+    /// <c>Win32_ComputerSystem</c> instance. WMI normalizes admin-token
+    /// privilege differences internally, so this does not require the
+    /// <c>SE_RESTORE_NAME</c> privilege that <c>SetComputerNameExW</c> does.
     /// </summary>
-    private static int ToHResult(int win32Error) => unchecked((int)0x80070000) | (win32Error & 0xFFFF);
-
-    /// <summary>
-    /// Enables the named privilege on the current process's primary token.
-    /// Returns <c>true</c> if the privilege is now in the enabled state. If
-    /// the privilege is not held by the user (e.g. non-admin) the call
-    /// succeeds but the privilege remains disabled; callers should still
-    /// proceed and let the Win32 call report the access-denied error so the
-    /// user sees a consistent message.
-    /// </summary>
-    private static bool EnablePrivilege(string privilegeName)
+    private static RenameResult InvokeWmiRename(string newName)
     {
-        if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, out var hToken))
-        {
-            App.Logger?.Warn($"OpenProcessToken failed: {Marshal.GetLastWin32Error()}");
-            return false;
-        }
-
+        ManagementObject? system = null;
         try
         {
-            if (!LookupPrivilegeValue(null, privilegeName, out var luid))
+            App.Logger?.Info("Connecting to WMI Win32_ComputerSystem...");
+            var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_ComputerSystem");
+            foreach (ManagementObject obj in searcher.Get())
             {
-                App.Logger?.Warn($"LookupPrivilegeValue('{privilegeName}') failed: {Marshal.GetLastWin32Error()}");
-                return false;
+                system = obj;
+                break;
             }
 
-            var tp = new TOKEN_PRIVILEGES
+            if (system is null)
             {
-                PrivilegeCount = 1,
-                Privileges = new LUID_AND_ATTRIBUTES
-                {
-                    Luid = luid,
-                    Attributes = SE_PRIVILEGE_ENABLED,
-                },
-            };
-
-            if (!AdjustTokenPrivileges(hToken, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero))
-            {
-                App.Logger?.Warn($"AdjustTokenPrivileges failed: {Marshal.GetLastWin32Error()}");
-                return false;
+                App.Logger?.Error("Win32_ComputerSystem not found via WMI.");
+                return RenameResult.Failed(FacadeWin32Generic, "未找到本机 WMI 计算机对象。");
             }
 
-            // ERROR_NOT_ALL_ASSIGNED means the user does not hold the
-            // privilege; that's a soft failure for our purposes (the
-            // SetComputerNameExW call will produce a proper access-denied
-            // HRESULT which the UI already maps).
-            var lastErr = Marshal.GetLastWin32Error();
-            if (lastErr == ERROR_NOT_ALL_ASSIGNED)
+            App.Logger?.Info($"Invoking WMI Rename('{newName}') on '{system["Name"]}'");
+            var invokeResult = system.InvokeMethod("Rename", new object[] { newName });
+            var returnValue = Convert.ToInt32(invokeResult["ReturnValue"]);
+            App.Logger?.Info($"WMI Rename ReturnValue={returnValue} (0x{returnValue:X})");
+
+            if (returnValue == 0)
             {
-                App.Logger?.Warn($"Privilege '{privilegeName}' not assigned to the user.");
-                return false;
+                App.Logger?.Info($"Computer renamed to '{newName}' via WMI.");
+                return RenameResult.Success(newName);
             }
 
-            return true;
+            var hresult = MapWmiReturnValue(returnValue);
+            var message = RenameResult.MapHResultToMessage(hresult);
+            App.Logger?.Error($"WMI Rename refused the new name. ReturnValue={returnValue} → HRESULT=0x{hresult:X8}");
+            return RenameResult.Failed(hresult, message);
+        }
+        catch (ManagementException mex)
+        {
+            // WMI surface errors come back as ManagementException — most
+            // commonly access-denied when the process is not admin, or
+            // "Invalid parameter" if WMI itself is broken.
+            App.Logger?.Error("WMI ManagementException.", mex);
+            var hresult = mex.ErrorCode != 0
+                ? unchecked((int)0x80070000) | (mex.ErrorCode & 0xFFFF)
+                : FacadeWin32Generic;
+            return RenameResult.Failed(
+                hresult,
+                RenameResult.MapHResultToMessage(hresult));
         }
         finally
         {
-            CloseHandle(hToken);
+            system?.Dispose();
         }
     }
 
-    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "SetComputerNameExW")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetComputerNameExW(ComputerNameFormat nameType, string lpBuffer);
-
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr GetCurrentProcess();
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool CloseHandle(IntPtr hObject);
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
-
-    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool LookupPrivilegeValue(string? lpSystemName, string lpName, out LUID lpLuid);
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool AdjustTokenPrivileges(
-        IntPtr TokenHandle,
-        [MarshalAs(UnmanagedType.Bool)] bool DisableAllPrivileges,
-        ref TOKEN_PRIVILEGES NewState,
-        uint BufferLength,
-        IntPtr PreviousState,
-        IntPtr ReturnLength);
-
-    private enum ComputerNameFormat
+    /// <summary>
+    /// Map <c>Win32_ComputerSystem.Rename</c> return values to HRESULT. The
+    /// WMI provider returns Win32-style error codes in <c>ReturnValue</c>.
+    /// See MSDN "Rename method of the Win32_ComputerSystem class" for the
+    /// canonical list (0 = success, 1..N = Win32 errors).
+    /// </summary>
+    private static int MapWmiReturnValue(int wmiReturnValue)
     {
-        ComputerNamePhysicalNetBIOS = 5,
-        ComputerNamePhysicalDnsHostname = 6,
-    }
+        if (wmiReturnValue == 0) return 0;
 
-    private const uint TOKEN_ADJUST_PRIVILEGES = 0x0020;
-    private const uint TOKEN_QUERY = 0x0008;
-    private const uint SE_PRIVILEGE_ENABLED = 0x00000002;
-    private const int ERROR_NOT_ALL_ASSIGNED = 1300;
-    private const string SE_RESTORE_NAME = "SeRestorePrivilege";
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct LUID
-    {
-        public uint LowPart;
-        public int HighPart;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct LUID_AND_ATTRIBUTES
-    {
-        public LUID Luid;
-        public uint Attributes;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct TOKEN_PRIVILEGES
-    {
-        public uint PrivilegeCount;
-        public LUID_AND_ATTRIBUTES Privileges;
+        // 1..15841 are Win32 error codes documented in winerror.h. Most
+        // common ones encountered in practice: 5 (access denied), 1326
+        // (logon failure), 1351 (ERROR_NO_SUCH_MEMBER), 87 (invalid
+        // parameter), 53 (network path not found). Convert to the same
+        // 0x8007XXXX HRESULT the rest of the app uses for consistency.
+        return unchecked((int)0x80070000) | (wmiReturnValue & 0xFFFF);
     }
 }
