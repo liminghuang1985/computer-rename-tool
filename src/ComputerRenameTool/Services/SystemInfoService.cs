@@ -1,5 +1,6 @@
-using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Management;
 using System.Runtime.InteropServices;
 using ComputerRenameTool.Models;
 using Microsoft.Win32;
@@ -7,10 +8,12 @@ using Microsoft.Win32;
 namespace ComputerRenameTool.Services;
 
 /// <summary>
-/// Reads OS identity and hardware descriptors from Win32 sources — no WMI, no
-/// third-party NuGet packages, in line with DESIGN.md §11. Each field is read
-/// independently so a single failure does not blank out the others (DESIGN.md
-/// §4.1, "未知 (...)" rendering).
+/// Reads OS identity and full hardware descriptors from WMI
+/// (<c>Win32_*</c> CIM classes). Falls back to the registry / Win32 for the
+/// legacy "summary" fields so existing tests and the simple one-line summary
+/// still work even when WMI is unavailable. Each WMI call is wrapped so a
+/// single failure does not blank out the rest of the report (FIX-REQUEST-7
+/// §关键实现要求 1).
 /// </summary>
 public sealed class SystemInfoService : ISystemInfoService
 {
@@ -31,9 +34,220 @@ public sealed class SystemInfoService : ISystemInfoService
         return new HardwareInfo(cpu, memory, gpu, disk);
     }
 
+    public CpuInfo? GetCpuInfo()
+    {
+        return SafeRead(() =>
+        {
+            using var searcher = NewWmiSearcher("SELECT Name, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed, LoadPercentage FROM Win32_Processor");
+            using var collection = searcher.Get();
+            foreach (ManagementBaseObject obj in collection)
+            {
+                using (obj)
+                {
+                    var name = obj["Name"] as string;
+                    var cores = ToInt(obj["NumberOfCores"]);
+                    var logical = ToInt(obj["NumberOfLogicalProcessors"]);
+                    var maxMhz = ToLong(obj["MaxClockSpeed"]);
+                    var load = ToUShort(obj["LoadPercentage"]);
+                    return new CpuInfo(
+                        TrimCpuName(name),
+                        cores,
+                        logical,
+                        maxMhz is null ? null : Math.Round(maxMhz.Value / 1000d, 2),
+                        load);
+                }
+            }
+            return null;
+        }, null);
+    }
+
+    public OperatingSystemInfo? GetOperatingSystemInfo()
+    {
+        return SafeRead(() =>
+        {
+            using var searcher = NewWmiSearcher("SELECT Caption, Version, BuildNumber, InstallDate, LastBootUpTime, SerialNumber, TotalVisibleMemorySize, FreePhysicalMemory FROM Win32_OperatingSystem");
+            using var collection = searcher.Get();
+            foreach (ManagementBaseObject obj in collection)
+            {
+                using (obj)
+                {
+                    return new OperatingSystemInfo(
+                        obj["Caption"] as string,
+                        obj["Version"] as string,
+                        obj["BuildNumber"] as string,
+                        obj["InstallDate"] as string,
+                        obj["LastBootUpTime"] as string,
+                        obj["SerialNumber"] as string,
+                        ToULong(obj["TotalVisibleMemorySize"]) * 1024UL,
+                        ToULong(obj["FreePhysicalMemory"]) * 1024UL);
+                }
+            }
+            return null;
+        }, null);
+    }
+
+    public BiosInfo? GetBiosInfo()
+    {
+        return SafeRead(() =>
+        {
+            using var searcher = NewWmiSearcher("SELECT Manufacturer, SMBIOSBIOSVersion, ReleaseDate FROM Win32_BIOS");
+            using var collection = searcher.Get();
+            foreach (ManagementBaseObject obj in collection)
+            {
+                using (obj)
+                {
+                    return new BiosInfo(
+                        obj["Manufacturer"] as string,
+                        obj["SMBIOSBIOSVersion"] as string,
+                        NormalizeWmiDate(obj["ReleaseDate"] as string));
+                }
+            }
+            return null;
+        }, null);
+    }
+
+    public MotherboardInfo? GetMotherboardInfo()
+    {
+        return SafeRead(() =>
+        {
+            using var searcher = NewWmiSearcher("SELECT Manufacturer, Product, SerialNumber FROM Win32_BaseBoard");
+            using var collection = searcher.Get();
+            foreach (ManagementBaseObject obj in collection)
+            {
+                using (obj)
+                {
+                    return new MotherboardInfo(
+                        obj["Manufacturer"] as string,
+                        obj["Product"] as string,
+                        obj["SerialNumber"] as string);
+                }
+            }
+            return null;
+        }, null);
+    }
+
+    public IReadOnlyList<MemoryChip> GetMemoryChips()
+    {
+        return SafeRead(() =>
+        {
+            var list = new List<MemoryChip>();
+            using var searcher = NewWmiSearcher("SELECT DeviceLocator, Manufacturer, PartNumber, Capacity, Speed, FormFactor FROM Win32_PhysicalMemory");
+            using var collection = searcher.Get();
+            foreach (ManagementBaseObject obj in collection)
+            {
+                using (obj)
+                {
+                    list.Add(new MemoryChip(
+                        obj["DeviceLocator"] as string,
+                        obj["Manufacturer"] as string,
+                        obj["PartNumber"] as string,
+                        ToULong(obj["Capacity"]),
+                        ToUInt(obj["Speed"]),
+                        ToUShort(obj["FormFactor"])));
+                }
+            }
+            return (IReadOnlyList<MemoryChip>)list;
+        }, Array.Empty<MemoryChip>());
+    }
+
+    public IReadOnlyList<PhysicalDisk> GetPhysicalDisks()
+    {
+        return SafeRead(() =>
+        {
+            // Index=0 keeps the boot drive first in the list — easier to read.
+            var list = new List<PhysicalDisk>();
+            using var searcher = NewWmiSearcher("SELECT Model, Size, InterfaceType, Status, SerialNumber, Index FROM Win32_DiskDrive");
+            using var collection = searcher.Get();
+            foreach (ManagementBaseObject obj in collection)
+            {
+                using (obj)
+                {
+                    list.Add(new PhysicalDisk(
+                        TrimCpuName(obj["Model"] as string),
+                        ToULong(obj["Size"]),
+                        obj["InterfaceType"] as string,
+                        obj["Status"] as string,
+                        obj["SerialNumber"] as string));
+                }
+            }
+            list.Sort((a, b) => string.Compare(a.Model, b.Model, StringComparison.OrdinalIgnoreCase));
+            return (IReadOnlyList<PhysicalDisk>)list;
+        }, Array.Empty<PhysicalDisk>());
+    }
+
+    public IReadOnlyList<LogicalDisk> GetLogicalDisks()
+    {
+        return SafeRead(() =>
+        {
+            var list = new List<LogicalDisk>();
+            using var searcher = NewWmiSearcher("SELECT DeviceID, VolumeName, Size, FreeSpace FROM Win32_LogicalDisk WHERE DriveType=3");
+            using var collection = searcher.Get();
+            foreach (ManagementBaseObject obj in collection)
+            {
+                using (obj)
+                {
+                    list.Add(new LogicalDisk(
+                        obj["DeviceID"] as string,
+                        obj["VolumeName"] as string,
+                        ToULong(obj["Size"]),
+                        ToULong(obj["FreeSpace"])));
+                }
+            }
+            list.Sort((a, b) => string.Compare(a.DeviceId, b.DeviceId, StringComparison.Ordinal));
+            return (IReadOnlyList<LogicalDisk>)list;
+        }, Array.Empty<LogicalDisk>());
+    }
+
+    public IReadOnlyList<GpuInfo> GetGpus()
+    {
+        return SafeRead(() =>
+        {
+            var list = new List<GpuInfo>();
+            using var searcher = NewWmiSearcher("SELECT Name, DriverVersion, AdapterRAM, VideoProcessor FROM Win32_VideoController");
+            using var collection = searcher.Get();
+            foreach (ManagementBaseObject obj in collection)
+            {
+                using (obj)
+                {
+                    list.Add(new GpuInfo(
+                        obj["Name"] as string,
+                        obj["DriverVersion"] as string,
+                        ToULong(obj["AdapterRAM"]),
+                        obj["VideoProcessor"] as string));
+                }
+            }
+            return (IReadOnlyList<GpuInfo>)list;
+        }, Array.Empty<GpuInfo>());
+    }
+
+    public IReadOnlyList<NetworkAdapter> GetNetworkAdapters()
+    {
+        return SafeRead(() =>
+        {
+            var list = new List<NetworkAdapter>();
+            using var searcher = NewWmiSearcher("SELECT Name, MACAddress, NetConnectionID, Speed, NetEnabled FROM Win32_NetworkAdapter WHERE NetEnabled=TRUE");
+            using var collection = searcher.Get();
+            foreach (ManagementBaseObject obj in collection)
+            {
+                using (obj)
+                {
+                    list.Add(new NetworkAdapter(
+                        obj["Name"] as string,
+                        obj["NetConnectionID"] as string,
+                        obj["MACAddress"] as string,
+                        ToULong(obj["Speed"])));
+                }
+            }
+            return (IReadOnlyList<NetworkAdapter>)list;
+        }, Array.Empty<NetworkAdapter>());
+    }
+
+    // ----------------------------------------------------------------------
+    // Legacy registry / Win32 helpers (kept for the summary one-liners).
+    // ----------------------------------------------------------------------
+
     private static string ReadWindowsVersion()
     {
-        // Prefer the registry product name (e.g. "Windows 11 Pro").
         try
         {
             using var key = Registry.LocalMachine.OpenSubKey(
@@ -94,7 +308,6 @@ public sealed class SystemInfoService : ISystemInfoService
 
     private static string? ReadGpuName()
     {
-        // Walk the PCI device tree looking for Display controllers (class 0x03).
         try
         {
             string? discrete = null;
@@ -130,7 +343,6 @@ public sealed class SystemInfoService : ISystemInfoService
                         continue;
                     }
 
-                    // DeviceDesc is "@\\%SystemRoot%\\...\\device.dll,-xxx;Friendly Name".
                     var friendly = ExtractFriendlyName(name!);
                     if (string.IsNullOrWhiteSpace(friendly))
                     {
@@ -169,13 +381,11 @@ public sealed class SystemInfoService : ISystemInfoService
 
     private static bool IsDiscreteGpu(string name)
     {
-        // Anything labelled "Intel" or matching an integrated AMD APU is treated as iGPU.
         if (name.Contains("Intel", StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
 
-        // AMD integrated: Radeon Graphics without an RX/Radeon Pro/Vega product suffix.
         if (name.Contains("Radeon", StringComparison.OrdinalIgnoreCase)
             && !RegexHasRadeonDiscreteMarker(name))
         {
@@ -199,7 +409,6 @@ public sealed class SystemInfoService : ISystemInfoService
 
     private static string? ReadSystemDisk()
     {
-        // Resolve the system drive and surface its total size + volume label.
         try
         {
             var sysDrive = Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\";
@@ -218,6 +427,45 @@ public sealed class SystemInfoService : ISystemInfoService
             return null;
         }
     }
+
+    // ----------------------------------------------------------------------
+    // WMI plumbing helpers.
+    // ----------------------------------------------------------------------
+
+    private static ManagementObjectSearcher NewWmiSearcher(string query)
+    {
+        // Use a per-call options object so the WMI COM apartment is created
+        // inside the calling thread (the searcher is disposed before the
+        // thread returns, which sidesteps cross-apartment marshal errors).
+        var options = new ConnectionOptions
+        {
+            Impersonation = ImpersonationLevel.Impersonate,
+            Authentication = AuthenticationLevel.Default,
+            EnablePrivileges = true,
+        };
+        var scope = new ManagementScope(@"\\.\root\cimv2", options);
+        return new ManagementObjectSearcher(scope, new ObjectQuery(query));
+    }
+
+    /// <summary>WMI DMTF datetime like "20240115000000.000000+000" → "2024-01-15".</summary>
+    private static string? NormalizeWmiDate(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw) || raw!.Length < 8) return raw;
+        return $"{raw[..4]}-{raw.Substring(4, 2)}-{raw.Substring(6, 2)}";
+    }
+
+    private static string? TrimCpuName(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return raw;
+        var trimmed = raw!.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+    }
+
+    private static int? ToInt(object? value) => value is null ? null : Convert.ToInt32(value, CultureInfo.InvariantCulture);
+    private static uint? ToUInt(object? value) => value is null ? null : Convert.ToUInt32(value, CultureInfo.InvariantCulture);
+    private static long? ToLong(object? value) => value is null ? null : Convert.ToInt64(value, CultureInfo.InvariantCulture);
+    private static ulong? ToULong(object? value) => value is null ? null : Convert.ToUInt64(value, CultureInfo.InvariantCulture);
+    private static ushort? ToUShort(object? value) => value is null ? null : Convert.ToUInt16(value, CultureInfo.InvariantCulture);
 
     private static T SafeRead<T>(Func<T> reader, T fallback)
     {

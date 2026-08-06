@@ -1,5 +1,4 @@
 using ComputerRenameTool.Helpers;
-using ComputerRenameTool.Models;
 using ComputerRenameTool.MVVM;
 using ComputerRenameTool.Services;
 
@@ -9,12 +8,17 @@ namespace ComputerRenameTool.ViewModels;
 /// Real-time rename state machine (DESIGN.md §5.2). Every keystroke updates
 /// <see cref="State"/> and <see cref="CanSubmit"/>; the bound UI reflects the
 /// new state via the same property change notifications.
+///
+/// Also owns the "current computer" header (machine name / Windows / user)
+/// shown at the top of the rename card (FIX-REQUEST-7 §UI 重新设计). After a
+/// successful rename the headline fields are refreshed to match the new name
+/// before the user reboots.
 /// </summary>
 public sealed class RenameViewModel : ObservableObject
 {
     private readonly IComputerRenameService _renameService;
-    private readonly string _currentName;
     private readonly string? _suggestedName;
+    private readonly ComputerInfoViewModel _computer;
 
     private string _inputName = string.Empty;
     private ValidationState _state = ValidationState.Empty;
@@ -24,19 +28,22 @@ public sealed class RenameViewModel : ObservableObject
     private string _submitResult = string.Empty;
     private bool _isSubmitSuccess;
 
-    public RenameViewModel(IComputerRenameService renameService, string currentName, string? suggestedName = null)
+    public RenameViewModel(IComputerRenameService renameService, Models.ComputerInfo initial, string? suggestedName = null)
     {
         _renameService = renameService;
-        _currentName = currentName;
         _suggestedName = suggestedName;
+        _computer = new ComputerInfoViewModel(initial);
 
         SubmitCommand = new RelayCommand(async _ => await SubmitAsync(), _ => CanSubmit && !IsSubmitting);
         UseSuggestedCommand = new RelayCommand(() => InputName = _suggestedName ?? string.Empty,
                                                () => !string.IsNullOrEmpty(_suggestedName));
-        CopyCurrentNameCommand = new RelayCommand(() => ClipboardHelper.CopyText(_currentName));
+        CopyCurrentNameCommand = new RelayCommand(() => ClipboardHelper.CopyText(_computer.ComputerName));
     }
 
-    public string CurrentName => _currentName;
+    public ComputerInfoViewModel Computer => _computer;
+
+    public string CurrentName => _computer.ComputerName;
+
     public string? SuggestedName => _suggestedName;
     public bool HasSuggestion => !string.IsNullOrEmpty(_suggestedName);
 
@@ -118,10 +125,8 @@ public sealed class RenameViewModel : ObservableObject
 
     public string SubmitButtonText => _isSubmitting ? "处理中..." : "修改机器名";
 
-    /// <summary>Visual color of the submit-result message (success vs error).</summary>
     public string SubmitResultColor => _isSubmitSuccess ? "#1B8E3B" : "#C42B1C";
 
-    /// <summary>Status icon glyph bound to <see cref="State"/>.</summary>
     public string ValidationIcon => _state switch
     {
         ValidationState.Valid => "✅",
@@ -129,11 +134,6 @@ public sealed class RenameViewModel : ObservableObject
         _ => "❌"
     };
 
-    /// <summary>
-    /// Resolved foreground brush for the validation icon. WPF can't bind a
-    /// <see cref="System.Windows.Media.Brush"/> resource key directly, so the
-    /// VM resolves the brush from <see cref="App.Current"/> at runtime.
-    /// </summary>
     public System.Windows.Media.Brush ValidationIconBrush
     {
         get
@@ -153,16 +153,23 @@ public sealed class RenameViewModel : ObservableObject
     public RelayCommand UseSuggestedCommand { get; }
     public RelayCommand CopyCurrentNameCommand { get; }
 
-    /// <summary>
-    /// Raised once a submit attempt has finished (success or failure). The
-    /// window subscribes to this to drive the "立即/稍后重启" prompt without
-    /// having to inspect localized UI strings.
-    /// </summary>
     public event EventHandler<RenameCompletedEventArgs>? RenameCompleted;
+
+    /// <summary>
+    /// Replaces the displayed computer info with the freshly read values
+    /// (called after a successful rename so the header reflects the new name
+    /// without a reboot, and again if the report is re-collected).
+    /// </summary>
+    public void UpdateComputer(Models.ComputerInfo info)
+    {
+        _computer.ComputerName = info.ComputerName;
+        _computer.WindowsVersion = info.WindowsVersion;
+        _computer.CurrentUser = info.CurrentUser;
+        OnPropertyChanged(nameof(CurrentName));
+    }
 
     private void OnInputNameChanged(string? value)
     {
-        // Empty — separate state for nicer UX
         if (string.IsNullOrWhiteSpace(value))
         {
             State = ValidationState.Empty;
@@ -171,8 +178,7 @@ public sealed class RenameViewModel : ObservableObject
             return;
         }
 
-        // Same as current
-        if (string.Equals(value, _currentName, StringComparison.Ordinal))
+        if (string.Equals(value, _computer.ComputerName, StringComparison.Ordinal))
         {
             State = ValidationState.SameAsCurrent;
             ValidationMessage = "机器名未发生变化";
@@ -180,7 +186,6 @@ public sealed class RenameViewModel : ObservableObject
             return;
         }
 
-        // Length
         if (value.Length > ComputerNameValidator.MaxLength)
         {
             State = ValidationState.TooLong;
@@ -189,7 +194,6 @@ public sealed class RenameViewModel : ObservableObject
             return;
         }
 
-        // Format
         if (!ComputerNameValidator.IsValid(value, out var error))
         {
             State = ValidationState.Invalid;
@@ -230,12 +234,6 @@ public sealed class RenameViewModel : ObservableObject
     }
 }
 
-/// <summary>
-/// Payload for the <see cref="RenameViewModel.RenameCompleted"/> event. Carries
-/// the full <see cref="RenameResult"/> so subscribers can branch on success /
-/// failure and surface an appropriate follow-up (e.g. reboot prompt) without
-/// having to inspect a translated UI string.
-/// </summary>
 public sealed class RenameCompletedEventArgs : EventArgs
 {
     public RenameCompletedEventArgs(RenameResult result)
@@ -246,7 +244,6 @@ public sealed class RenameCompletedEventArgs : EventArgs
     public RenameResult Result { get; }
 }
 
-/// <summary>Real-time validation states bound to the rename input (DESIGN.md §5.2).</summary>
 public enum ValidationState
 {
     Empty,

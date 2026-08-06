@@ -1,0 +1,391 @@
+<UserControl x:Class="ComputerRenameTool.Views.UserControls.HardwareReportSection"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:ComputerRenameTool.ViewModels"
+             mc:Ignorable="d"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             d:DataContext="{d:DesignInstance Type=vm:HardwareReportViewModel}"
+             d:DesignHeight="320" d:DesignWidth="640">
+    <Border Style="{StaticResource CardBorderStyle}">
+        <StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Style="{StaticResource SectionHeaderStyle}"
+                           Text="电脑配置" />
+                <TextBlock Grid.Column="1"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="12"
+                           Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Run Text="加载中" />
+                    <Run Text="." />
+                    <Run Text="." />
+                    <Run Text="." />
+                </TextBlock>
+            </Grid>
+
+            <!-- Summary rows (always visible) -->
+            <Grid Margin="0,4,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="CPU:" />
+                <TextBlock Grid.Column="1"
+                           Style="{StaticResource ValueStyle}"
+                           Text="{Binding Cpu.DisplayName}"
+                           ToolTip="{Binding Cpu.DisplayName}" />
+            </Grid>
+
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="内存:" />
+                <TextBlock Grid.Column="1" Style="{StaticResource ValueStyle}" Text="{Binding MemorySummary}" />
+            </Grid>
+
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="显卡:" />
+                <TextBlock Grid.Column="1"
+                           Style="{StaticResource ValueStyle}"
+                           Text="{Binding Gpus[0].Name, FallbackValue=数据不可读}" />
+            </Grid>
+
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="硬盘:" />
+                <TextBlock Grid.Column="1" Style="{StaticResource ValueStyle}" Text="{Binding DiskSummary}" />
+            </Grid>
+
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="BIOS:" />
+                <TextBlock Grid.Column="1" Style="{StaticResource ValueStyle}" Text="{Binding Bios.DisplayName, FallbackValue=数据不可读}" />
+            </Grid>
+
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="主板:" />
+                <TextBlock Grid.Column="1" Style="{StaticResource ValueStyle}" Text="{Binding Motherboard.DisplayName, FallbackValue=数据不可读}" />
+            </Grid>
+
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="系统:" />
+                <TextBlock Grid.Column="1" Style="{StaticResource ValueStyle}" Text="{Binding OperatingSystem.DisplayName, FallbackValue=数据不可读}" />
+            </Grid>
+
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="启动:" />
+                <TextBlock Grid.Column="1" Style="{StaticResource ValueStyle}" Text="{Binding OperatingSystem.BootTime, FallbackValue=数据不可读}" />
+            </Grid>
+
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="IP:" />
+                <TextBlock Grid.Column="1" Style="{StaticResource ValueStyle}" Text="{Binding NetworkAdapters[0].Connection, FallbackValue=数据不可读}" />
+            </Grid>
+
+            <!-- Expand toggle -->
+            <Button x:Name="ExpandToggleButton"
+                    Margin="0,8,0,0"
+                    HorizontalAlignment="Left"
+                    Padding="10,4"
+                    Style="{StaticResource SecondaryButton}"
+                    Content="{Binding ExpandLabel}"
+                    Click="ExpandToggleButton_Click" />
+
+            <!-- Detail (collapsible) -->
+            <StackPanel x:Name="DetailPanel"
+                        Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}"
+                        Margin="0,12,0,0">
+
+                <!-- Memory detail -->
+                <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,0,0,8"
+                        Visibility="{Binding HasMemoryChips, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="内存详情" FontSize="13" />
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="80" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="插槽" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="1" Text="制造商" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="2" Text="型号" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="3" Text="容量" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="4" Text="频率" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="5" Text="类型" Style="{StaticResource LabelStyle}" Margin="0" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding MemoryChips}" Margin="0,4,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="80" />
+                                            <ColumnDefinition Width="80" />
+                                            <ColumnDefinition Width="80" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Locator}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Manufacturer}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Column="2" Text="{Binding PartNumber}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Column="3" Text="{Binding Capacity}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Column="4" Text="{Binding Speed}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Column="5" Text="{Binding FormFactor}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Physical disk detail -->
+                <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,0,0,8"
+                        Visibility="{Binding HasPhysicalDisks, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="物理盘详情" FontSize="13" />
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="80" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="型号" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="1" Text="容量" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="2" Text="接口" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="3" Text="状态" Style="{StaticResource LabelStyle}" Margin="0" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding PhysicalDisks}" Margin="0,4,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="100" />
+                                            <ColumnDefinition Width="80" />
+                                            <ColumnDefinition Width="80" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Model}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Size}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Interface}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Column="3" Text="{Binding Status}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Logical disk detail -->
+                <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,0,0,8"
+                        Visibility="{Binding HasLogicalDisks, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="逻辑盘详情" FontSize="13" />
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="60" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="60" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="盘符" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="1" Text="标签" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="2" Text="容量" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="3" Text="已用" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="4" Text="占比" Style="{StaticResource LabelStyle}" Margin="0" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding LogicalDisks}" Margin="0,4,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="60" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="100" />
+                                            <ColumnDefinition Width="100" />
+                                            <ColumnDefinition Width="60" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding DeviceId}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Label}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Size}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Column="3" Text="{Binding Used}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Column="4" Text="{Binding Percent}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- CPU detail -->
+                <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="CPU 详情" FontSize="13" />
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="核心/线程" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="1" Text="{Binding Cpu.CoresLogicalDisplay}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                        </Grid>
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="最大频率" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="1" Text="{Binding Cpu.MaxClockDisplay}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                        </Grid>
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="当前负载" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="1" Text="{Binding Cpu.LoadDisplay}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- GPU detail -->
+                <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,0,0,8"
+                        Visibility="{Binding HasGpus, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="GPU 详情" FontSize="13" />
+                        <ItemsControl ItemsSource="{Binding Gpus}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="名称" Style="{StaticResource LabelStyle}" Margin="0" />
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Name}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="显存" Style="{StaticResource LabelStyle}" Margin="0" />
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding VideoMemory}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="驱动" Style="{StaticResource LabelStyle}" Margin="0" />
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Driver}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="处理器" Style="{StaticResource LabelStyle}" Margin="0" />
+                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Processor}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Network detail -->
+                <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,0,0,8"
+                        Visibility="{Binding HasNetworkAdapters, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="网络详情" FontSize="13" />
+                        <ItemsControl ItemsSource="{Binding NetworkAdapters}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="80" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="名称" Style="{StaticResource LabelStyle}" Margin="0" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Connection}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Mac}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                        <TextBlock Grid.Column="3" Text="{Binding Speed}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- BIOS / motherboard / OS / install / boot -->
+                <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,0,0,0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="BIOS / 主板 / 系统" FontSize="13" />
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="BIOS" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="1" Text="{Binding Bios.DisplayName, FallbackValue=数据不可读}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                        </Grid>
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="主板" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="1" Text="{Binding Motherboard.DisplayName, FallbackValue=数据不可读}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                        </Grid>
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="安装" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="1" Text="{Binding OperatingSystem.InstallDate, FallbackValue=数据不可读}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                        </Grid>
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="启动" Style="{StaticResource LabelStyle}" Margin="0" />
+                            <TextBlock Grid.Column="1" Text="{Binding OperatingSystem.BootTime, FallbackValue=数据不可读}" Style="{StaticResource ValueStyle}" FontSize="12" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

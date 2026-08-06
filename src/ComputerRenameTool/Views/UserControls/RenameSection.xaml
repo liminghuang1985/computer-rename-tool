@@ -6,7 +6,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              d:DataContext="{d:DesignInstance Type=vm:RenameViewModel}"
-             d:DesignHeight="260" d:DesignWidth="600">
+             d:DesignHeight="320" d:DesignWidth="640">
     <Border Style="{StaticResource CardBorderStyle}">
         <StackPanel>
             <Grid>
@@ -21,6 +21,49 @@
                            Text="{Binding ValidationIcon}"
                            FontSize="18"
                            VerticalAlignment="Center" />
+            </Grid>
+
+            <!-- Current machine name (refreshed after rename) -->
+            <Grid Margin="0,4,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="100" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="当前机器名:" />
+                <TextBlock Grid.Column="1"
+                           Style="{StaticResource ValueStyle}"
+                           Text="{Binding Computer.ComputerName}"
+                           ToolTip="{Binding Computer.ComputerName}" />
+                <Button Grid.Column="2"
+                        x:Name="CopyNameButton"
+                        Content="📋 复制"
+                        Padding="10,4"
+                        Margin="6,0,0,0"
+                        Click="CopyNameButton_Click"
+                        Style="{StaticResource SecondaryButton}" />
+            </Grid>
+
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="100" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="Windows:" />
+                <TextBlock Grid.Column="1"
+                           Style="{StaticResource ValueStyle}"
+                           Text="{Binding Computer.WindowsVersion}" />
+            </Grid>
+
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="100" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="当前用户:" />
+                <TextBlock Grid.Column="1"
+                           Style="{StaticResource ValueStyle}"
+                           Text="{Binding Computer.CurrentUser}" />
             </Grid>
 
             <!-- Input row with embedded status icon -->

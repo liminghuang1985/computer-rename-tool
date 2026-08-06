@@ -4,8 +4,8 @@
         xmlns:vm="clr-namespace:ComputerRenameTool.ViewModels"
         xmlns:views="clr-namespace:ComputerRenameTool.Views.UserControls"
         Title="Windows 机器名修改工具"
-        Height="640" Width="720"
-        MinHeight="600" MinWidth="640"
+        Height="720" Width="720"
+        MinHeight="640" MinWidth="640"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BgPrimaryBrush}"
         Foreground="{StaticResource TextPrimaryBrush}"
@@ -25,7 +25,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -47,14 +47,18 @@
                    Foreground="{StaticResource TextPrimaryBrush}"
                    Margin="0,0,0,16" />
 
-        <!-- 1. Computer info -->
-        <views:ComputerInfoSection Grid.Row="2" Margin="0,0,0,12" DataContext="{Binding Computer}" />
+        <!-- 1. Rename (primary feature, top) -->
+        <views:RenameSection Grid.Row="2" Margin="0,0,0,12" DataContext="{Binding Rename}" />
 
-        <!-- 2. Hardware info -->
-        <views:HardwareInfoSection Grid.Row="3" Margin="0,0,0,12" DataContext="{Binding Hardware}" />
+        <!-- 2. Hardware report (summary + collapsible detail) -->
+        <ScrollViewer Grid.Row="3" Margin="0,0,0,12"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <views:HardwareReportSection DataContext="{Binding Hardware}" />
+        </ScrollViewer>
 
-        <!-- 3. Rename -->
-        <views:RenameSection Grid.Row="4" Margin="0,0,0,16" DataContext="{Binding Rename}" />
+        <!-- Spacer -->
+        <Grid Grid.Row="4" />
 
         <!-- Footer hint + status bar -->
         <Border Grid.Row="5"
@@ -62,8 +66,7 @@
                 BorderBrush="{StaticResource BorderSubtleBrush}"
                 BorderThickness="1"
                 CornerRadius="6"
-                Padding="12,8"
-                Margin="0,0,0,0">
+                Padding="12,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

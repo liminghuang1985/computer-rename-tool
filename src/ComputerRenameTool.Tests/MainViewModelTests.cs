@@ -9,20 +9,27 @@ namespace ComputerRenameTool.Tests;
 /// Regression tests for the post-rename UI refresh wiring. The reported bug
 /// was that the "current computer name" label at the top of the main window
 /// kept showing the old name after a successful rename, so these tests pin
-/// the contract that <see cref="MainViewModel"/> re-reads system info once
-/// <see cref="RenameViewModel.IsSubmitSuccess"/> flips to <c>true</c>.
+/// the contract that <see cref="MainViewModel"/> re-reads the hardware report
+/// once <see cref="RenameViewModel.IsSubmitSuccess"/> flips to <c>true</c>.
 /// </summary>
 public class MainViewModelTests
 {
     private sealed class FakeSystemInfo : ISystemInfoService
     {
-        public ComputerInfo Computer { get; set; } =
-            new("OLD-NAME", "Windows 11", "user");
-        public HardwareInfo Hardware { get; set; } =
-            new("CPU", "16 GB", "GPU", "Disk");
+        public ComputerInfo Computer { get; set; } = new("OLD-NAME", "Windows 11", "user");
+        public HardwareInfo Hardware { get; set; } = new("CPU", "16 GB", "GPU", "Disk");
 
         public ComputerInfo GetComputerInfo() => Computer;
         public HardwareInfo GetHardwareInfo() => Hardware;
+        public CpuInfo? GetCpuInfo() => null;
+        public OperatingSystemInfo? GetOperatingSystemInfo() => null;
+        public BiosInfo? GetBiosInfo() => null;
+        public MotherboardInfo? GetMotherboardInfo() => null;
+        public IReadOnlyList<MemoryChip> GetMemoryChips() => Array.Empty<MemoryChip>();
+        public IReadOnlyList<PhysicalDisk> GetPhysicalDisks() => Array.Empty<PhysicalDisk>();
+        public IReadOnlyList<LogicalDisk> GetLogicalDisks() => Array.Empty<LogicalDisk>();
+        public IReadOnlyList<GpuInfo> GetGpus() => Array.Empty<GpuInfo>();
+        public IReadOnlyList<NetworkAdapter> GetNetworkAdapters() => Array.Empty<NetworkAdapter>();
     }
 
     private sealed class FakeAdmin : IAdminPrivilegeService
@@ -37,48 +44,78 @@ public class MainViewModelTests
         public RenameResult Rename(string newName) => Result;
     }
 
+    private sealed class FakeHardwareReportService : IHardwareReportService
+    {
+        public HardwareReport? NextReport { get; set; }
+        public int CallCount { get; private set; }
+
+        public Task<HardwareReport> CollectAsync(CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            return Task.FromResult(NextReport ?? HardwareReport.Empty(new ComputerInfo("FRESH", "Win", "user")));
+        }
+    }
+
+    private static MainViewModel BuildViewModel(
+        FakeSystemInfo info,
+        out FakeHardwareReportService hw)
+    {
+        hw = new FakeHardwareReportService();
+        return new MainViewModel(info, new FakeRenameService(), new FakeAdmin(), hw);
+    }
+
     [Fact]
     public void ComputerName_InitiallyMirrorsSystemInfo()
     {
         var info = new FakeSystemInfo();
-        var vm = new MainViewModel(info, new FakeRenameService(), new FakeAdmin());
-        Assert.Equal("OLD-NAME", vm.Computer.ComputerName);
+        var vm = BuildViewModel(info, out _);
+        Assert.Equal("OLD-NAME", vm.Rename.CurrentName);
     }
 
     [Fact]
-    public void Constructor_PopulatesAllSectionViewModels()
+    public void Constructor_PopulatesRenameAndHardware()
     {
-        var info = new FakeSystemInfo
-        {
-            Computer = new ComputerInfo("MY-PC", "Windows 11 Pro", "alice"),
-            Hardware = new HardwareInfo("Intel i7", "32 GB", "NVIDIA RTX", "C: 500 GB"),
-        };
-        var vm = new MainViewModel(info, new FakeRenameService(), new FakeAdmin());
+        var info = new FakeSystemInfo();
+        var vm = BuildViewModel(info, out _);
 
-        Assert.Equal("MY-PC", vm.Computer.ComputerName);
-        Assert.Equal("Windows 11 Pro", vm.Computer.WindowsVersion);
-        Assert.Equal("alice", vm.Computer.CurrentUser);
-        Assert.Equal("Intel i7", vm.Hardware.Cpu);
-        Assert.Equal("32 GB", vm.Hardware.Memory);
-        Assert.Equal("NVIDIA RTX", vm.Hardware.Gpu);
-        Assert.Equal("C: 500 GB", vm.Hardware.Disk);
         Assert.NotNull(vm.Rename);
+        Assert.NotNull(vm.Hardware);
+        // Hardware starts in loading state until the service returns.
+        Assert.True(vm.Hardware.IsLoading);
     }
 
     [Fact]
-    public void Constructor_NullHardwareFields_UseUnknownPlaceholder()
+    public async Task Hardware_RefreshesAfterCollect()
     {
-        var info = new FakeSystemInfo
+        var info = new FakeSystemInfo();
+        var hw = new FakeHardwareReportService
         {
-            Computer = new ComputerInfo("MY-PC", "Windows 11 Pro", "alice"),
-            Hardware = new HardwareInfo(null, null, null, null),
+            NextReport = new HardwareReport(
+                info.GetComputerInfo(),
+                new CpuInfo("Intel i7", 20, 28, 5.4, (ushort)23),
+                new OperatingSystemInfo("Windows 11 Pro", "10.0", "22631", null, null, null, 0, 0),
+                new BiosInfo("Dell", "1.5", "2024-01-15"),
+                new MotherboardInfo("Dell Inc.", "Latitude 5540", "ABC123"),
+                new[] { new MemoryChip("DIMM A1", "Samsung", "M...", 17179869184UL, 4800, 13) },
+                new[] { new PhysicalDisk("Samsung 990 PRO", 1024UL * 1024 * 1024 * 1024, "NVMe", "OK", "S123") },
+                new[] { new LogicalDisk("C:", "System", 500UL * 1024 * 1024 * 1024, 250UL * 1024 * 1024 * 1024) },
+                new[] { new GpuInfo("NVIDIA RTX 4060", "31.0.15.4601", 8UL * 1024 * 1024 * 1024, "AD107") },
+                new[] { new NetworkAdapter("Wi-Fi", "WiFi", "aa:bb:cc:dd:ee:ff", 1_000_000_000UL) }),
         };
-        var vm = new MainViewModel(info, new FakeRenameService(), new FakeAdmin());
+        var vm = new MainViewModel(info, new FakeRenameService(), new FakeAdmin(), hw);
 
-        Assert.Equal("未知 (驱动未安装)", vm.Hardware.Cpu);
-        Assert.Equal("未知 (驱动未安装)", vm.Hardware.Memory);
-        Assert.Equal("未知 (驱动未安装)", vm.Hardware.Gpu);
-        Assert.Equal("未知 (驱动未安装)", vm.Hardware.Disk);
+        // Wait for the background task to complete.
+        WaitFor(() => !vm.Hardware.IsLoading);
+
+        Assert.False(vm.Hardware.IsLoading);
+        Assert.Equal("Intel i7", vm.Hardware.Cpu.DisplayName);
+        Assert.Equal("Windows 11 Pro", vm.Hardware.OperatingSystem.DisplayName);
+        Assert.Equal("Dell Inc.", vm.Hardware.Motherboard.Manufacturer);
+        Assert.Single(vm.Hardware.MemoryChips);
+        Assert.Equal("Samsung", vm.Hardware.MemoryChips[0].Manufacturer);
+        Assert.Single(vm.Hardware.PhysicalDisks);
+        Assert.Equal("NVMe", vm.Hardware.PhysicalDisks[0].Interface);
+        Assert.Equal("WiFi", vm.Hardware.NetworkAdapters[0].Connection);
     }
 
     [Fact]
@@ -92,21 +129,28 @@ public class MainViewModelTests
         {
             Result = RenameResult.Success("NEW-NAME"),
         };
-        var vm = new MainViewModel(info, rename, new FakeAdmin());
+        var hw = new FakeHardwareReportService();
+        var vm = new MainViewModel(info, rename, new FakeAdmin(), hw);
 
-        // Simulate the kernel accepting the rename: subsequent reads return
+        // Simulate the kernel accepting the rename: the next WMI read returns
         // the new name.
-        info.Computer = new ComputerInfo("NEW-NAME", "Windows 11", "user");
+        hw.NextReport = new HardwareReport(
+            new ComputerInfo("NEW-NAME", "Windows 11", "user"),
+            null, null, null, null,
+            Array.Empty<MemoryChip>(),
+            Array.Empty<PhysicalDisk>(),
+            Array.Empty<LogicalDisk>(),
+            Array.Empty<GpuInfo>(),
+            Array.Empty<NetworkAdapter>());
 
         // Drive the rename through the VM so PropertyChanged fires.
         vm.Rename.InputName = "NEW-NAME";
         vm.Rename.SubmitCommand.Execute(null);
 
-        // Wait for the async submit to complete.
-        WaitFor(() => vm.Rename.IsSubmitSuccess);
+        // Wait for the async submit + the post-rename refresh.
+        WaitFor(() => hw.CallCount >= 2);
 
-        // The displayed name should now be the new one, without a reboot.
-        Assert.Equal("NEW-NAME", vm.Computer.ComputerName);
+        Assert.Equal("NEW-NAME", vm.Rename.CurrentName);
     }
 
     [Fact]
@@ -120,32 +164,31 @@ public class MainViewModelTests
         {
             Result = RenameResult.Failed(unchecked((int)0x80070005), "denied"),
         };
-        var vm = new MainViewModel(info, rename, new FakeAdmin());
+        var hw = new FakeHardwareReportService();
+        var vm = new MainViewModel(info, rename, new FakeAdmin(), hw);
 
-        // Even if the underlying name somehow changed, the VM must not
-        // touch the displayed name on failure.
-        info.Computer = new ComputerInfo("CHANGED-ELSEWHERE", "Windows 11", "user");
+        // Capture the call count after the initial load.
+        WaitFor(() => !vm.Hardware.IsLoading);
+        var callsAfterLoad = hw.CallCount;
 
         vm.Rename.InputName = "NEW-NAME";
         vm.Rename.SubmitCommand.Execute(null);
         WaitFor(() => !vm.Rename.IsSubmitting);
 
         Assert.False(vm.Rename.IsSubmitSuccess);
-        Assert.Equal("OLD-NAME", vm.Computer.ComputerName);
+        Assert.Equal("OLD-NAME", vm.Rename.CurrentName);
+        Assert.Equal(callsAfterLoad, hw.CallCount);
     }
 
     [Fact]
     public void RenameCompleted_FiresOnSuccess()
     {
-        var info = new FakeSystemInfo
-        {
-            Computer = new ComputerInfo("OLD-NAME", "Windows 11", "user"),
-        };
+        var info = new FakeSystemInfo();
         var rename = new FakeRenameService
         {
             Result = RenameResult.Success("NEW-NAME"),
         };
-        var vm = new MainViewModel(info, rename, new FakeAdmin());
+        var vm = new MainViewModel(info, rename, new FakeAdmin(), new FakeHardwareReportService());
 
         RenameCompletedEventArgs? captured = null;
         vm.Rename.RenameCompleted += (_, e) => captured = e;

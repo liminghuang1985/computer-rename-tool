@@ -1,18 +1,27 @@
 using System.Windows;
 using System.Windows.Controls;
+using ComputerRenameTool.Helpers;
 using ComputerRenameTool.ViewModels;
 
 namespace ComputerRenameTool.Views.UserControls;
 
 /// <summary>
 /// "Rename" section. Code-behind is intentionally minimal — all behaviour
-/// lives in <see cref="RenameViewModel"/>. The only piece left here is the
-/// pre-rename confirmation dialog (DESIGN.md §6.2 step 3), which is a pure
-/// view concern and so lives in code-behind rather than the VM.
+/// lives in <see cref="RenameViewModel"/>. The only pieces left here are the
+/// pre-rename confirmation dialog (DESIGN.md §6.2 step 3) and the clipboard
+/// copy button, both of which are pure view concerns.
 /// </summary>
 public partial class RenameSection : UserControl
 {
     public RenameSection() => InitializeComponent();
+
+    private void CopyNameButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is RenameViewModel vm)
+        {
+            ClipboardHelper.CopyText(vm.Computer.ComputerName);
+        }
+    }
 
     private void RenameButton_Click(object? sender, RoutedEventArgs e)
     {
