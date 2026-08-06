@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using ComputerRenameTool.Models;
 using ComputerRenameTool.MVVM;
 using ComputerRenameTool.Services;
 
@@ -56,7 +57,7 @@ public sealed class MainViewModel : ObservableObject
         Rename = new RenameViewModel(renameService, computer.ComputerName, suggestedName);
 
         // Hardware report is loaded asynchronously so the UI paints first.
-        Hardware = new HardwareReportViewModel(ComputerRenameTool.Models.HardwareReport.Empty(computer))
+        Hardware = new HardwareReportViewModel(HardwareReport.Empty(computer))
         {
             IsLoading = true,
         };

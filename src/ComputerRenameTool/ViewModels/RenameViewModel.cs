@@ -1,4 +1,5 @@
 using ComputerRenameTool.Helpers;
+using ComputerRenameTool.Models;
 using ComputerRenameTool.MVVM;
 using ComputerRenameTool.Services;
 
