@@ -6,7 +6,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              d:DataContext="{d:DesignInstance Type=vm:RenameViewModel}"
-             d:DesignHeight="200" d:DesignWidth="600">
+             d:DesignHeight="260" d:DesignWidth="600">
     <Border Style="{StaticResource CardBorderStyle}">
         <StackPanel>
             <Grid>
@@ -72,10 +72,10 @@
             <!-- Submit -->
             <Button x:Name="RenameButton"
                     Content="{Binding SubmitButtonText}"
-                    Margin="0,16,0,0"
-                    Height="40"
-                    MinWidth="180"
-                    HorizontalAlignment="Center"
+                    Margin="0,20,0,0"
+                    Height="44"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Bottom"
                     Command="{Binding SubmitCommand}"
                     IsEnabled="{Binding CanSubmit}"
                     Click="RenameButton_Click"

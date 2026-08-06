@@ -96,4 +96,29 @@ public class RenameViewModelTests
         Assert.False(vm.HasSuggestion);
         Assert.False(vm.UseSuggestedCommand.CanExecute(null));
     }
+
+    [Fact]
+    public void ValidInput_SubmitCommandCanExecute()
+    {
+        var vm = new RenameViewModel(new FakeRenameService(), "OLD-NAME")
+        {
+            InputName = "NEW-NAME"
+        };
+        Assert.True(vm.CanSubmit);
+        Assert.True(vm.SubmitCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void EmptyInput_SubmitCommandCannotExecute()
+    {
+        var vm = new RenameViewModel(new FakeRenameService(), "OLD-NAME");
+        Assert.False(vm.SubmitCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void SubmitButtonText_DefaultsToRename()
+    {
+        var vm = new RenameViewModel(new FakeRenameService(), "OLD-NAME");
+        Assert.Equal("修改机器名", vm.SubmitButtonText);
+    }
 }

@@ -46,6 +46,42 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public void Constructor_PopulatesAllSectionViewModels()
+    {
+        var info = new FakeSystemInfo
+        {
+            Computer = new ComputerInfo("MY-PC", "Windows 11 Pro", "alice"),
+            Hardware = new HardwareInfo("Intel i7", "32 GB", "NVIDIA RTX", "C: 500 GB"),
+        };
+        var vm = new MainViewModel(info, new FakeRenameService(), new FakeAdmin());
+
+        Assert.Equal("MY-PC", vm.Computer.ComputerName);
+        Assert.Equal("Windows 11 Pro", vm.Computer.WindowsVersion);
+        Assert.Equal("alice", vm.Computer.CurrentUser);
+        Assert.Equal("Intel i7", vm.Hardware.Cpu);
+        Assert.Equal("32 GB", vm.Hardware.Memory);
+        Assert.Equal("NVIDIA RTX", vm.Hardware.Gpu);
+        Assert.Equal("C: 500 GB", vm.Hardware.Disk);
+        Assert.NotNull(vm.Rename);
+    }
+
+    [Fact]
+    public void Constructor_NullHardwareFields_UseUnknownPlaceholder()
+    {
+        var info = new FakeSystemInfo
+        {
+            Computer = new ComputerInfo("MY-PC", "Windows 11 Pro", "alice"),
+            Hardware = new HardwareInfo(null, null, null, null),
+        };
+        var vm = new MainViewModel(info, new FakeRenameService(), new FakeAdmin());
+
+        Assert.Equal("未知 (驱动未安装)", vm.Hardware.Cpu);
+        Assert.Equal("未知 (驱动未安装)", vm.Hardware.Memory);
+        Assert.Equal("未知 (驱动未安装)", vm.Hardware.Gpu);
+        Assert.Equal("未知 (驱动未安装)", vm.Hardware.Disk);
+    }
+
+    [Fact]
     public void ComputerName_RefreshesAfterSuccessfulRename()
     {
         var info = new FakeSystemInfo

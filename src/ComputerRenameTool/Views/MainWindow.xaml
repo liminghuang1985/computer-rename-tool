@@ -4,8 +4,8 @@
         xmlns:vm="clr-namespace:ComputerRenameTool.ViewModels"
         xmlns:views="clr-namespace:ComputerRenameTool.Views.UserControls"
         Title="Windows 机器名修改工具"
-        Height="600" Width="720"
-        MinHeight="540" MinWidth="640"
+        Height="640" Width="720"
+        MinHeight="600" MinWidth="640"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BgPrimaryBrush}"
         Foreground="{StaticResource TextPrimaryBrush}"
@@ -15,13 +15,17 @@
         <vm:MainViewModel x:Key="MainVM" />
     </Window.Resources>
 
+    <Window.DataContext>
+        <Binding Source="{StaticResource MainVM}" />
+    </Window.DataContext>
+
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -50,11 +54,7 @@
         <views:HardwareInfoSection Grid.Row="3" Margin="0,0,0,12" DataContext="{Binding Hardware}" />
 
         <!-- 3. Rename -->
-        <views:RenameSection Grid.Row="4" Margin="0,0,0,0" DataContext="{Binding Rename}" />
-
-        <!-- Spacer -->
-        <Grid Grid.Row="4" />
-        <Grid Grid.Row="5" Height="0" />
+        <views:RenameSection Grid.Row="4" Margin="0,0,0,16" DataContext="{Binding Rename}" />
 
         <!-- Footer hint + status bar -->
         <Border Grid.Row="5"
@@ -63,7 +63,7 @@
                 BorderThickness="1"
                 CornerRadius="6"
                 Padding="12,8"
-                Margin="0,16,0,0">
+                Margin="0,0,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
