@@ -33,10 +33,10 @@
     <PackageReference Include="System.Management" Version="8.0.0" />
   </ItemGroup>
 
-  <ItemGroup>
+  <PropertyGroup>
     <!-- Force UAC elevation at launch (requireAdministrator).
          Rename-Computer / WMI Win32_ComputerSystem.Rename require High Integrity. -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
-  </ItemGroup>
+  </PropertyGroup>
 
 </Project>
