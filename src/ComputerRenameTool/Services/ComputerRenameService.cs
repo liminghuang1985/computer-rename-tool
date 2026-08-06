@@ -81,7 +81,10 @@ public sealed class ComputerRenameService : IComputerRenameService
 
             App.Logger?.Info($"Invoking WMI Rename('{newName}') on '{system["Name"]}'");
             var invokeResult = system.InvokeMethod("Rename", new object[] { newName });
-            var returnValue = Convert.ToInt32(invokeResult["ReturnValue"]);
+            // InvokeMethod returns the method's out-parameters; the WMI
+            // provider for Win32_ComputerSystem.Rename surfaces the value
+            // directly as a uint (Win32 error code; 0 == success).
+            var returnValue = Convert.ToUInt32(invokeResult);
             App.Logger?.Info($"WMI Rename ReturnValue={returnValue} (0x{returnValue:X})");
 
             if (returnValue == 0)
@@ -90,7 +93,7 @@ public sealed class ComputerRenameService : IComputerRenameService
                 return RenameResult.Success(newName);
             }
 
-            var hresult = MapWmiReturnValue(returnValue);
+            var hresult = MapWmiReturnValue((int)returnValue);
             var message = RenameResult.MapHResultToMessage(hresult);
             App.Logger?.Error($"WMI Rename refused the new name. ReturnValue={returnValue} → HRESULT=0x{hresult:X8}");
             return RenameResult.Failed(hresult, message);
@@ -101,8 +104,9 @@ public sealed class ComputerRenameService : IComputerRenameService
             // commonly access-denied when the process is not admin, or
             // "Invalid parameter" if WMI itself is broken.
             App.Logger?.Error("WMI ManagementException.", mex);
-            var hresult = mex.ErrorCode != 0
-                ? unchecked((int)0x80070000) | (mex.ErrorCode & 0xFFFF)
+            var status = (uint)mex.ErrorCode;
+            var hresult = status != 0
+                ? unchecked((int)0x80070000) | ((int)status & 0xFFFF)
                 : FacadeWin32Generic;
             return RenameResult.Failed(
                 hresult,
